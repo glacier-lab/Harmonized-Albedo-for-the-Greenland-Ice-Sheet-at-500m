@@ -9,6 +9,12 @@ Target directory: /standard/GCOM-C/GCOM-C.SGLI/L2.CRYOS.SIPR/3
 
 Filename format: GC1SG1_YYYYMMDDmttt_gAAAA_LLx1x2_KKKKr_appp.h5
 where AAAA = vvhh (vv: vertical tile 00-17, hh: horizontal tile 00-35)
+
+Note:
+This script was developed and tested on windows 11. Our server blocks port 2051, 
+so I have not been able to verify if it works on linux systems.
+
+Author: Shunan Feng (shunan.feng@envs.au.dk)
 """
 
 import paramiko
@@ -350,15 +356,17 @@ class SFTPDownloader:
             # Determine local path
             if preserve_structure:
                 # Preserve directory structure relative to base path
-                rel_path = os.path.relpath(remote_path, remote_base_path)
+                # Remote paths use '/', convert to OS-appropriate separator for local paths
+                rel_path = remote_path[len(remote_base_path):].lstrip('/')
+                rel_path = rel_path.replace('/', os.sep)
                 local_path = os.path.join(local_dest_path, rel_path)
             else:
                 # Flatten structure
-                filename = os.path.basename(remote_path)
+                filename = os.path.basename(remote_path.replace('/', os.sep))
                 local_path = os.path.join(local_dest_path, filename)
             
-            # Normalize path separators
-            local_path = local_path.replace('\\', '/')
+            # Normalize path for the current OS
+            local_path = os.path.normpath(local_path)
             
             # Check if already complete
             if os.path.exists(local_path) and os.path.getsize(local_path) == file_size:

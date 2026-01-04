@@ -44,6 +44,7 @@ None
 
 Notes
 -----
+**It was developed and tested on Ubuntu 20.04.**
 - This routine uses requests.Session and will attach HTTPBasicAuth to the session only
     if both username and password are provided.
 - The THREDDS conversion assumes the server exposes a "/thredds/fileServer/" path at the
