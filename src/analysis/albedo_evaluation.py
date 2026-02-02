@@ -213,7 +213,7 @@ def main():
     
     # File paths
     aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
-    rs_path = '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_mod10.csv'
+    rs_path = '/data_3/shunan_2/AU/hsa500m/SICE/albedo_sice.csv'
 
     # Load and process data
     df = load_and_preprocess_data(aws_path, rs_path)

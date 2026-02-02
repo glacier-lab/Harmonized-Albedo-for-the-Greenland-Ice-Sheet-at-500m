@@ -5,12 +5,23 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import re
-import rasterio as rio
+
 # %%
 aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/aws_annual_drift.csv'
 df_aws = pd.read_csv(aws_path)
 carra_path = '/data_3/shunan_2/AU/hsa500m/CARRA/GL500m'
-csv_output_path = '/data_3/shunan_2/AU/hsa500m/CARRA/albedo_carra.csv'
+csv_output_path = '/data_3/shunan_2/AU/hsa500m/CARRA/albedo_carra_exception.csv'
+
+# AWS CEN reinstallation date
+CEN_REINSTALLATION_DATE = '2017-07-25'
+
+# Identify AWS sites that have 2016 data (these need special handling in 2017)
+aws_with_2016 = set(df_aws[df_aws['year'] == 2016]['aws'].unique())
+
+# Create a lookup dictionary for 2016 coordinates (name -> (lat, lon))
+df_aws_2016 = df_aws[df_aws['year'] == 2016]
+coords_2016 = {row['aws']: (row['lat'], row['lon']) 
+               for _, row in df_aws_2016.iterrows()}
 
 # create csv file for storing output, overwrite if exists
 with open(csv_output_path, 'w') as f:
@@ -49,9 +60,21 @@ for year in years:
             Y_2d = ds_carra['Y'].values  # shape (Y, X)
             X_2d = ds_carra['X'].values  # shape (Y, X)
             
-            # Find nearest grid indices for each requested (lat, lon)
+            # Find nearest grid indices for each AWS site
             grid_indices = []
-            for lat, lon in zip(df_aws_year['lat'].values, df_aws_year['lon'].values):
+            aws_names = []
+            
+            for aws_idx, row in df_aws_year.iterrows():
+                aws_name = row['aws']
+                aws_names.append(aws_name)
+                
+                # Special handling for 2017: use 2016 coordinates if before CEN reinstallation
+                if year == 2017 and aws_name in aws_with_2016 and imtime < pd.Timestamp(CEN_REINSTALLATION_DATE):
+                    lat, lon = coords_2016[aws_name]
+                else:
+                    lat = row['lat']
+                    lon = row['lon']
+                
                 # Calculate the squared distance to find the nearest point
                 dist2 = (Y_2d - lat) ** 2 + (X_2d - lon) ** 2
                 # Find the 2D index of the minimum distance
@@ -68,7 +91,7 @@ for year in years:
             albedo_array = np.vstack(albedo_values)
 
             df_carra = pd.DataFrame({
-                'aws': df_aws_year['aws'].values,
+                'aws': aws_names,
                 'time': imtime,
             })
             df_carra['albedo_carra'] = albedo_array
