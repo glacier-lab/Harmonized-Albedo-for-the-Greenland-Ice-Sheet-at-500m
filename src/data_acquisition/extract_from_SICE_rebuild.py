@@ -1,6 +1,6 @@
 #%%
 """
-Extract albedo from GCOM-C daily mosaic GeoTIFF files at AWS locations.
+Extract albedo from SICE rebuild GeoTIFF files at AWS locations.
 Handles CEN AWS reinstallation on 2017-07-25.
 """
 import os
@@ -9,12 +9,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from pyproj import Transformer, CRS
+from tqdm import tqdm
 
 # %%
 aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/aws_annual_drift.csv'
 df_aws = pd.read_csv(aws_path)
-gcomc_path = '/data_3/shunan_2/AU/hsa500m/GCOMC_mosaics'
-csv_output_path = '/data_3/shunan_2/AU/hsa500m/GCOMC/albedo_gcomc.csv'
+sice_rebuild_path = '/data_3/shunan_2/AU/hsa500m/SICE_rebuild'
+csv_output_path = '/data_3/shunan_2/AU/hsa500m/SICE/albedo_sice_rebuild.csv'
 
 # AWS CEN reinstallation date
 CEN_REINSTALLATION_DATE = '2017-07-25'
@@ -33,29 +34,32 @@ transformer = Transformer.from_crs(crs_wgs84, crs_3413, always_xy=True)
 
 # Create output CSV with header
 with open(csv_output_path, 'w') as f:
-    f.write('aws,time,albedo_gcomc\n')
+    f.write('aws,time,albedo_sice_rebuild\n')
 
 # %%
-# Find all GCOMC mosaic files
-gcomc_files = sorted(glob.glob(os.path.join(gcomc_path, 'GCOMC_Albedo_*.tif')))
+# Find all SICE rebuild mosaic files
+sice_files = sorted(glob.glob(os.path.join(sice_rebuild_path, 'SICE_Albedo_*.tif')))
 
-if len(gcomc_files) == 0:
-    print(f"No GCOMC files found in {gcomc_path}, exiting.")
+print(f"\n{'='*60}")
+print("Extract SICE Rebuild Albedo at AWS Locations")
+print(f"{'='*60}")
+print(f"Found {len(sice_files)} SICE rebuild files\n")
+
+if len(sice_files) == 0:
+    print(f"No SICE rebuild files found in {sice_rebuild_path}, exiting.")
 else:
     total_records = 0
     skipped_files = 0
 
-    for i, file_path in enumerate(gcomc_files):
+    for file_path in tqdm(sice_files, desc="Processing Files", unit="file"):
         imname = os.path.basename(file_path)
         
         try:
-            # Extract date from filename: GCOMC_Albedo_YYYYMMDD_500m.tif
+            # Extract date from filename: SICE_Albedo_YYYYMMDD_500m.tif
             date_str = imname.split('_')[2]
             imtime = pd.to_datetime(date_str, format='%Y%m%d')
             year = imtime.year
             
-            print(f"Processing {i+1}/{len(gcomc_files)}: {imname}")
-
             # Open GeoTIFF with rioxarray
             ds = xr.open_dataarray(file_path, engine='rasterio')
             
@@ -63,7 +67,8 @@ else:
             df_aws_year = df_aws[df_aws['year'] == year]
             
             if len(df_aws_year) == 0:
-                print(f"  ⚠ No AWS data for year {year}, skipping")
+                tqdm.write(f"⚠ {imname}: No AWS data for year {year}")
+                skipped_files += 1
                 continue
             
             albedo_records = []
@@ -91,25 +96,31 @@ else:
                     albedo_records.append({
                         'aws': aws_name,
                         'time': imtime,
-                        'albedo_gcomc': albedo_value
+                        'albedo_sice_rebuild': albedo_value
                     })
                 except Exception as e:
-                    print(f"  ⚠ Failed to extract value for AWS {aws_name}: {e}")
+                    tqdm.write(f"✗ {imname}: Failed to extract value for AWS {aws_name}: {e}")
             
             if albedo_records:
-                df_gcomc = pd.DataFrame(albedo_records)
-                df_gcomc.to_csv(csv_output_path, mode='a', header=False, index=False)
-                total_records += len(df_gcomc)
-                print(f"  ✓ Extracted {len(df_gcomc)} records")
+                df_sice = pd.DataFrame(albedo_records)
+                df_sice.to_csv(csv_output_path, mode='a', header=False, index=False)
+                total_records += len(df_sice)
+                tqdm.write(f"✓ {imname}: Extracted {len(df_sice)} records")
+            else:
+                tqdm.write(f"⚠ {imname}: No valid records extracted")
             
             ds.close()
             
         except Exception as e:
-            print(f"  ✗ Error processing {imname}: {type(e).__name__}: {e}")
+            tqdm.write(f"✗ {imname}: {type(e).__name__}: {e}")
             skipped_files += 1
             continue
 
     print(f"\n{'='*60}")
-    print(f"Done. Wrote {total_records} rows to {csv_output_path}")
-    print(f"Skipped {skipped_files} files due to errors")
+    print("Extraction Summary")
     print(f"{'='*60}")
+    print(f"Total files:         {len(sice_files):>5}")
+    print(f"Records written:     {total_records:>5}")
+    print(f"Skipped/Failed:      {skipped_files:>5}")
+    print(f"Output file:         {csv_output_path}")
+    print(f"{'='*60}\n")
