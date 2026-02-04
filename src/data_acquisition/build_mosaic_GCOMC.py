@@ -1,6 +1,18 @@
 """
-Build daily mosaics of GCOM-C albedo images.
-Processes GCOM-C albedo data (HDF5) to EPSG:3413 (Greenland) at 500m.
+Build daily mosaics of GCOM-C albedo images over Greenland.
+
+This script processes GCOM-C/SGLI albedo data in HDF5 format and creates daily
+mosaics reprojected to EPSG:3413 (NSIDC Polar Stereographic North) at 500m resolution.
+
+Key operations:
+- Reads GCOM-C albedo from HDF5 files
+- Applies calibration (slope and offset)
+- Reprojects from sinusoidal to polar stereographic projection
+- Handles overlapping pixels by averaging
+- Masks to Greenland ice sheet extent using PROMICE mask
+- Exports daily composites as GeoTIFF files
+
+Shunan Feng (shunan.feng@envs.au.dk)
 """
 #%%
 import os
@@ -39,7 +51,132 @@ def read_mask(mask_path):
         mask_cropped = np.where(mask_cropped <= 0, 0, 1)
     
     return mask_cropped, new_transform, crs, mask_cropped.shape
+def get_eqa_transform(geom_attrs, cols, rows):
+    """
+    Calculates the correct Affine transform using EQA metadata.
+    """
+    R = 6371007.181
+    
+    # Extract geographic corners
+    upper_lat = float(geom_attrs['Upper_left_latitude'][0])
+    lower_lat = float(geom_attrs['Lower_left_latitude'][0])
+    
+    # We use the Right Longitude because in your sample it is 0, 
+    # which is the central meridian (lon_0) for this tile's projection logic
+    right_lon = float(geom_attrs['Upper_right_longitude'][0])
+    left_lon_top = float(geom_attrs['Upper_left_longitude'][0])
+    
+    # Convert Lat/Lon to Sinusoidal Meters (The Math)
+    # y = R * lat_rad
+    # x = R * lon_rad * cos(lat_rad)
+    
+    north = R * np.radians(upper_lat)
+    south = R * np.radians(lower_lat)
+    
+    # Calculate East/West in meters
+    # Even though lon changes with latitude, the 'x' in meters remains constant 
+    # for the vertical edges of the tile.
+    east = R * np.radians(right_lon) * np.cos(np.radians(upper_lat))
+    west = R * np.radians(left_lon_top) * np.cos(np.radians(upper_lat))
+    
+    # Create the transform for the 4800x4800 grid
+    return from_bounds(west, south, east, north, cols, rows)
 
+'''
+Notes on QA band:
+Data_description: 
+[b'Bit-0:no input data, 
+1:land/water flag 
+2: cloudy/clear flag, 
+3:day/night(shadow) flag, 
+4-6:snow over land or seaice, 
+snow mixed w/t vegetation or bare ice, melting snow over land or seaice, (111) no snow, 
+7-9:stray light correction (VN,SW,IR), 
+10:radiance saturation, 
+11:sun-glint area, 
+12-14:missing channel(VN,SW,IR), 
+15:(reserved)']
+'''
+def apply_qa_mask(albedo_data, qa_flag):
+    """
+    Apply QA masking to GCOM-C albedo data.
+    
+    QA Flag Bit Structure:
+    - Bit 0: No input data flag (1 = invalid)
+    - Bit 1: Land/water flag (not critical, but can filter if needed)
+    - Bit 2: Cloudy/clear flag (1 = cloudy, 0 = clear)
+    - Bit 3: Day/night (shadow) flag (1 = night/shadow, 0 = day)
+    - Bits 4-6: Snow conditions (for snow over land/ice)
+    - Bits 7-9: Stray light correction status
+    - Bit 10: Radiance saturation (1 = saturated)
+    - Bit 11: Sun-glint area (1 = glint)
+    - Bits 12-14: Missing channel flags
+    - Bit 15: Reserved
+    
+    Parameters
+    ----------
+    albedo_data : ndarray
+        Albedo values (2D)
+    qa_flag : ndarray
+        QA flag values (2D) with same shape as albedo_data
+    
+    Returns
+    -------
+    albedo_masked : ndarray
+        Albedo with QA-based masking applied
+    """
+    albedo_masked = albedo_data.copy()
+    
+    # Extract individual bit flags
+    no_input = (qa_flag & 1) > 0                    # Bit 0
+    cloudy = (qa_flag & (1 << 2)) > 0              # Bit 2
+    night_shadow = (qa_flag & (1 << 3)) > 0        # Bit 3
+    radiance_saturated = (qa_flag & (1 << 10)) > 0  # Bit 10
+    sun_glint = (qa_flag & (1 << 11)) > 0          # Bit 11
+    missing_channel = (qa_flag & (1 << 12)) > 0    # Bit 12 (check VN channel)
+    
+    # Error DN values (typically 65535 for uint16)
+    error_dn = qa_flag == 65535
+    
+    # Create mask: set to NaN for invalid pixels
+    invalid_mask = (no_input | cloudy | night_shadow | radiance_saturated | 
+                    sun_glint | missing_channel | error_dn)
+    
+    albedo_masked[invalid_mask] = np.nan
+    
+    return albedo_masked
+def apply_qa_mask_conservative(albedo_data, qa_flag):
+    """
+    Apply stricter QA masking - only keep clearly good observations.
+    
+    This version masks out:
+    - No input data
+    - Cloudy pixels
+    - Night/shadow observations
+    - Saturated pixels
+    - Sun glint
+    - Missing channels
+    
+    Use this for high-confidence albedo only.
+    """
+    albedo_masked = albedo_data.copy()
+    
+    # Same bit extractions as standard masking
+    no_input = (qa_flag & 1) > 0
+    cloudy = (qa_flag & (1 << 2)) > 0
+    night_shadow = (qa_flag & (1 << 3)) > 0
+    radiance_saturated = (qa_flag & (1 << 10)) > 0
+    sun_glint = (qa_flag & (1 << 11)) > 0
+    missing_channel = (qa_flag & (1 << 12)) > 0
+    error_dn = qa_flag == 65535
+    
+    # Mark all questionable pixels as invalid
+    invalid_mask = (no_input | cloudy | night_shadow | radiance_saturated | 
+                    sun_glint | missing_channel | error_dn)
+    
+    albedo_masked[invalid_mask] = np.nan
+    
+    return albedo_masked
 # --- Setup Paths ---
 im_mask_path = "/data_3/shunan_2/AU/hsa500m/PROMICE-2022IceMask.tif"
 imfolder = '/data_3/shunan_2/AU/hsa500m/GCOMC/'
@@ -59,6 +196,7 @@ for f in imfiles:
 
 df_files = pd.DataFrame(file_data)
 unique_dates = df_files['date'].unique()
+sinusoidal_crs = CRS.from_proj4("+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs")
 
 # --- Processing Loop ---
 for date in tqdm(unique_dates, desc="Processing Days"):
@@ -74,38 +212,34 @@ for date in tqdm(unique_dates, desc="Processing Days"):
                 # 1. Read Data
                 albedo_ds = f['/Image_data/SALB']
                 qa_flag = f['/Image_data/QA_flag'][:]
+                geom = f['/Geometry_data'].attrs
                 
                 # Apply scale and offset
                 slope = albedo_ds.attrs['Slope']
                 offset = albedo_ds.attrs['Offset']
                 data = albedo_ds[:].astype(np.float32) * slope + offset
                 
-                # Basic QA Mask (example: mask out values using QA_flag if needed)
-                # data[qa_flag != 0] = np.nan 
-                data[data <= 0] = np.nan # Mask fill values
-                data[data >= 1] = np.nan  # Mask invalid albedo values
+                # 2. Apply QA Mask (IMPORTANT: do this BEFORE value range checks)
+                data = apply_qa_mask(data, qa_flag)
                 
-                # 2. Get Geolocation Attributes
-                geom = f['/Geometry_data'].attrs
-                l_lat = float(geom['Lower_left_latitude'][0])
-                l_lon = float(geom['Lower_left_longitude'][0])
-                u_lat = float(geom['Upper_right_latitude'][0])
-                u_lon = float(geom['Upper_right_longitude'][0])
+                # 3. Additional value range checks (after QA masking)
+                data[data <= 0] = np.nan  # Mask negative/zero values
+                data[data > 1] = np.nan   # Mask values > 1
+                
+                # 4. Get Geolocation Attributes
                 rows, cols = data.shape
                 
-                # 3. Define Source Transform (WGS84)
-                # Note: 'u_lat' is usually top, 'l_lat' is bottom. 
-                src_transform = from_bounds(l_lon, l_lat, u_lon, u_lat, cols, rows)
-                src_crs = CRS.from_epsg(4326)
+                # 5. Define Source Transform (Sinusoidal)
+                src_transform = get_eqa_transform(geom, cols, rows)
 
-                # 4. Reproject this granule to the mask grid
+                # 6. Reproject this granule to the mask grid
                 temp_reprojected = np.full(mask_shape, np.nan, dtype=np.float32)
                 
                 reproject(
                     source=data,
                     destination=temp_reprojected,
                     src_transform=src_transform,
-                    src_crs=src_crs,
+                    src_crs=sinusoidal_crs,
                     dst_transform=mask_transform,
                     dst_crs=mask_crs,
                     resampling=Resampling.bilinear,
@@ -113,13 +247,13 @@ for date in tqdm(unique_dates, desc="Processing Days"):
                     dst_nodata=np.nan
                 )
 
-                # 5. Add to daily aggregate
+                # 7. Add to daily aggregate
                 mask_valid = ~np.isnan(temp_reprojected)
                 daily_mosaic[mask_valid] += temp_reprojected[mask_valid]
                 daily_count[mask_valid] += 1
                 
         except Exception as e:
-            print(f"Error processing {f_path}: {e}")
+            tqdm.write(f"Error processing {os.path.basename(f_path)}: {e}")
 
     # Calculate mean for overlaps
     with np.errstate(divide='ignore', invalid='ignore'):

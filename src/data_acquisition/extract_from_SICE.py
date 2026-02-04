@@ -49,7 +49,8 @@ for year in years:
             print(f"Processing {i+1}/{len(sice_files_year)} for year {year}: {imname}")
 
             ds_sice = xr.open_dataset(file_path)
-            ds_albedo = ds_sice['albedo_bb_planar_sw']
+            ds_albedo = ds_sice['BBA_combination']
+            # ds_cloud = ds_sice['cloud_mask']
             x_coord = ds_sice['x'].values  # 1D array
             y_coord = ds_sice['y'].values  # 1D array
 
