@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import seaborn as sns
 import numpy as np
+import cmocean 
 
 #%% 
 def setup_plotting_style():
@@ -74,23 +75,23 @@ def create_overall_regression_plot(df):
     metrics = calculate_metrics(df['albedo_aws'], df['albedo_rs'])
     
     # Create scatter plot with regression line
-    sns.scatterplot(ax=ax, data=df, x='albedo_rs', y='albedo_aws', hue='aws', alpha=0.5)
+    binplot = ax.hexbin(df['albedo_rs'], df['albedo_aws'], gridsize=100, cmap=cmocean.cm.haline, bins='log')
+    cb = plt.colorbar(binplot, ax=ax)
+    cb.set_label(r'$\log_{10}(\mathrm{Count}+1)$')
     sns.regplot(ax=ax, data=df, x='albedo_rs', y='albedo_aws', 
                 scatter=False, color='red', label=f'Regression (R²={metrics["r_squared"]:.3f})')
     
     # Add 1:1 reference line
-    min_val = min(df['albedo_rs'].min(), df['albedo_aws'].min())
-    max_val = max(df['albedo_rs'].max(), df['albedo_aws'].max())
-    ax.plot([min_val, max_val], [min_val, max_val], '--', color='gray', alpha=0.8, label='1:1 line')
+    ax.plot([0, 1], [0, 1], '--', color='gray', alpha=0.8, label='1:1 line')
     
     # Customize plot
     ax.set_aspect('equal')
-    ax.set_xlim([min_val, max_val])
-    ax.set_ylim([min_val, max_val])
+    ax.set_xlim((0, 1))
+    ax.set_ylim((0, 1))
     plt.ylabel('AWS Albedo')
     plt.xlabel('Remote Sensing Albedo')
     plt.title('Remote Sensing vs AWS Albedo Comparison')
-    plt.legend()
+    # plt.legend()
     
     # Add statistics text box
     stats_text = f'N = {metrics["n"]}\n'
@@ -147,17 +148,15 @@ def plot_single_station(df, aws, ax):
                 scatter=False, color='red', ax=ax)
     
     # Add 1:1 line
-    min_val = min(aws_data['albedo_rs'].min(), aws_data['albedo_aws'].min())
-    max_val = max(aws_data['albedo_rs'].max(), aws_data['albedo_aws'].max())
-    ax.plot([min_val, max_val], [min_val, max_val], '--', color='gray', alpha=0.8)
+    ax.plot([0, 1], [0, 1], '--', color='gray', alpha=0.8)
     
     # Customize plot
     ax.set_title(f'AWS: {aws} (N={metrics["n"]}, R²={metrics["r_squared"]:.2f})')
     ax.set_xlabel('Remote Sensing Albedo')
     ax.set_ylabel('AWS Albedo')
     ax.set_aspect('equal')
-    ax.set_xlim([min_val, max_val])
-    ax.set_ylim([min_val, max_val])
+    ax.set_xlim((0, 1))
+    ax.set_ylim((0, 1))
     
     # Print statistics
     print(f"\nStatistics for AWS {aws}:")
@@ -166,6 +165,7 @@ def plot_single_station(df, aws, ax):
             print(f"{key}: {value:.3f}")
         else:
             print(f"{key}: {value}")
+    print(f"Mean: {aws_data['albedo_aws'].mean():.3f} ± {aws_data['albedo_aws'].std():.3f}")
 
 def create_time_series_plots(df):
     """Create time series plots for each AWS station."""
@@ -203,17 +203,18 @@ def plot_time_series(df, aws, ax):
     ax.set_title(f'AWS: {aws}')
     ax.set_ylabel('Albedo')
     ax.set_xlabel('Date')
-    ax.set_ylim([0, 1])
+    ax.set_ylim((0, 1))
     ax.legend()
     ax.grid(True)
 
+#%%
 def main():
     """Main function to run the analysis."""
     setup_plotting_style()
     
     # File paths
     aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
-    rs_path = '/data_3/shunan_2/AU/hsa500m/SICE/albedo_sice.csv'
+    rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_mod10.csv'
 
     # Load and process data
     df = load_and_preprocess_data(aws_path, rs_path)
@@ -224,14 +225,61 @@ def main():
     
     # Create plots
     create_overall_regression_plot(df)
-    plt.show()
+    # plt.show()
     
     create_station_subplots(df)
-    plt.show()
+    # plt.show()
     
     create_time_series_plots(df)
-    plt.show()
+    # plt.show()
 
 if __name__ == '__main__':
     main()
+# %% quick check modis orbital drift MOD:2020-02-27 MYD:2021-03-18
+
+def main():
+    setup_plotting_style()
+    
+    # File paths
+    aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
+    rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_mod10.csv'
+
+    # Load and process data
+    df = load_and_preprocess_data(aws_path, rs_path)
+    df_pre_drift = df[df['time'] < pd.Timestamp('2020-02-27')]
+    df_post_drift = df[df['time'] >= pd.Timestamp('2020-02-27')]
+    
+    print(f"Total number of matched observations: {len(df)}")
+    print(f"Number of AWS stations: {df['aws'].nunique()}")
+    print(f"AWS stations: {df['aws'].unique()}\n")
+    
+    # Create plots
+    create_overall_regression_plot(df_pre_drift)
+    # plt.show()
+
+    create_overall_regression_plot(df_post_drift)
+    # plt.show()
+if __name__ == '__main__':
+    main()    
+def main():
+    setup_plotting_style()
+    
+    # File paths
+    aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
+    rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_myd10.csv'
+
+    # Load and process data
+    df = load_and_preprocess_data(aws_path, rs_path)
+    df_pre_drift = df[df['time'] < pd.Timestamp('2021-03-18')]
+    df_post_drift = df[df['time'] >= pd.Timestamp('2021-03-18')]
+    
+    print(f"Total number of matched observations: {len(df)}")
+    print(f"Number of AWS stations: {df['aws'].nunique()}")
+    print(f"AWS stations: {df['aws'].unique()}\n")
+    
+    # Create plots
+    create_overall_regression_plot(df_pre_drift)
+    create_overall_regression_plot(df_post_drift)
+if __name__ == '__main__':
+    main()    
 # %%

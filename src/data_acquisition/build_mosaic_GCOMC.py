@@ -57,29 +57,43 @@ def get_eqa_transform(geom_attrs, cols, rows):
     """
     R = 6371007.181
     
-    # Extract geographic corners
+    # 1. Get latitudes
     upper_lat = float(geom_attrs['Upper_left_latitude'][0])
     lower_lat = float(geom_attrs['Lower_left_latitude'][0])
     
-    # We use the Right Longitude because in your sample it is 0, 
-    # which is the central meridian (lon_0) for this tile's projection logic
-    right_lon = float(geom_attrs['Upper_right_longitude'][0])
-    left_lon_top = float(geom_attrs['Upper_left_longitude'][0])
-    
-    # Convert Lat/Lon to Sinusoidal Meters (The Math)
-    # y = R * lat_rad
-    # x = R * lon_rad * cos(lat_rad)
-    
+    # 2. Calculate Y (North/South) - this is always safe
     north = R * np.radians(upper_lat)
     south = R * np.radians(lower_lat)
     
-    # Calculate East/West in meters
-    # Even though lon changes with latitude, the 'x' in meters remains constant 
-    # for the vertical edges of the tile.
-    east = R * np.radians(right_lon) * np.cos(np.radians(upper_lat))
-    west = R * np.radians(left_lon_top) * np.cos(np.radians(upper_lat))
+    # 3. Calculate X (East/West)
+    # To avoid the "North Pole 0 width" error, we calculate width at 
+    # the latitude furthest from the pole.
+    ref_lat = lower_lat if abs(lower_lat) < abs(upper_lat) else upper_lat
     
-    # Create the transform for the 4800x4800 grid
+    # Check for the extreme case (if both are 90, which shouldn't happen)
+    if abs(ref_lat) == 90:
+        # Fallback to the standard 10-degree tile width in meters
+        width_m = (2 * np.pi * R) / 36   # 360/10 = 36 tiles globally
+    else:
+        left_lon = float(geom_attrs['Lower_left_longitude'][0])
+        right_lon = float(geom_attrs['Lower_right_longitude'][0])
+        
+        # Calculate width in meters at the reference latitude
+        west = R * np.radians(left_lon) * np.cos(np.radians(ref_lat))
+        east = R * np.radians(right_lon) * np.cos(np.radians(ref_lat))
+        width_m = east - west
+
+    # 4. Re-calculate west/east based on the constant width
+    # This ensures the transform is a perfect square
+    # We use the right_lon (usually 0 or fixed) as the anchor
+    anchor_x = R * np.radians(float(geom_attrs['Lower_right_longitude'][0])) * np.cos(np.radians(ref_lat))
+    east = anchor_x
+    west = anchor_x - abs(width_m)
+
+    # Sanity check to prevent "Cannot invert geotransform"
+    if west == east or north == south:
+        raise ValueError(f"Invalid geometry: Bounds are zero. W:{west} E:{east} N:{north} S:{south}")
+
     return from_bounds(west, south, east, north, cols, rows)
 
 '''
@@ -133,50 +147,20 @@ def apply_qa_mask(albedo_data, qa_flag):
     night_shadow = (qa_flag & (1 << 3)) > 0        # Bit 3
     radiance_saturated = (qa_flag & (1 << 10)) > 0  # Bit 10
     sun_glint = (qa_flag & (1 << 11)) > 0          # Bit 11
-    missing_channel = (qa_flag & (1 << 12)) > 0    # Bit 12 (check VN channel)
+    # missing_channel = (qa_flag & (1 << 12)) > 0    # Bit 12 (check VN channel)
+    any_missing_channel = (qa_flag & (7 << 12)) != 0 # Binary 111 (7) shifted left by 12 covers all three bits
     
     # Error DN values (typically 65535 for uint16)
     error_dn = qa_flag == 65535
     
     # Create mask: set to NaN for invalid pixels
     invalid_mask = (no_input | cloudy | night_shadow | radiance_saturated | 
-                    sun_glint | missing_channel | error_dn)
+                    sun_glint | any_missing_channel | error_dn)
     
     albedo_masked[invalid_mask] = np.nan
     
     return albedo_masked
-def apply_qa_mask_conservative(albedo_data, qa_flag):
-    """
-    Apply stricter QA masking - only keep clearly good observations.
-    
-    This version masks out:
-    - No input data
-    - Cloudy pixels
-    - Night/shadow observations
-    - Saturated pixels
-    - Sun glint
-    - Missing channels
-    
-    Use this for high-confidence albedo only.
-    """
-    albedo_masked = albedo_data.copy()
-    
-    # Same bit extractions as standard masking
-    no_input = (qa_flag & 1) > 0
-    cloudy = (qa_flag & (1 << 2)) > 0
-    night_shadow = (qa_flag & (1 << 3)) > 0
-    radiance_saturated = (qa_flag & (1 << 10)) > 0
-    sun_glint = (qa_flag & (1 << 11)) > 0
-    missing_channel = (qa_flag & (1 << 12)) > 0
-    error_dn = qa_flag == 65535
-    
-    # Mark all questionable pixels as invalid
-    invalid_mask = (no_input | cloudy | night_shadow | radiance_saturated | 
-                    sun_glint | missing_channel | error_dn)
-    
-    albedo_masked[invalid_mask] = np.nan
-    
-    return albedo_masked
+
 # --- Setup Paths ---
 im_mask_path = "/data_3/shunan_2/AU/hsa500m/PROMICE-2022IceMask.tif"
 imfolder = '/data_3/shunan_2/AU/hsa500m/GCOMC/'

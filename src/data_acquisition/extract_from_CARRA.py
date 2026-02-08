@@ -5,7 +5,7 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import re
-import rasterio as rio
+# import rasterio as rio
 # %%
 aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/aws_annual_drift.csv'
 df_aws = pd.read_csv(aws_path)
