@@ -7,7 +7,6 @@ import calendar
 #%%
 # Configuration
 output_dir = "/data_3/shunan_2/AU/hsa500m/Yukihiko"  
-os.makedirs(output_dir, exist_ok=True)
 
 #%%
 
