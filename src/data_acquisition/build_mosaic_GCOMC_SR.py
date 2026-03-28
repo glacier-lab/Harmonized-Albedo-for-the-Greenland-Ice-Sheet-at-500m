@@ -34,6 +34,8 @@ from rasterio.transform import from_bounds
 from rasterio.warp import reproject, Resampling
 from pyproj import CRS
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from affine import Affine
 
 
 # %%
@@ -50,10 +52,7 @@ def read_mask(mask_path):
         col_start, col_end = valid_cols[0], valid_cols[-1] + 1
 
         mask_cropped = mask[row_start:row_end, col_start:col_end]
-        new_transform = rio.windows.transform(
-            rio.windows.Window(col_start, row_start, col_end - col_start, row_end - row_start),
-            transform,
-        )
+        new_transform = transform * Affine.translation(col_start, row_start)
         mask_cropped = np.where(mask_cropped <= 0, 0, 1)
 
     return mask_cropped, new_transform, crs, mask_cropped.shape
@@ -132,13 +131,13 @@ def apply_qa_mask(data, qa_flag):
     no_data       = (qa_flag & (1 << 0))  > 0
     sunglint_mask = (qa_flag & (1 << 4))  > 0
     cloud_mask    = (qa_flag & (1 << 6))  > 0
-    prob_cloud    = (qa_flag & (1 << 7))  > 0
+    # prob_cloud    = (qa_flag & (1 << 7))  > 0
     pol_cloud     = (qa_flag & (1 << 13)) > 0
     high_tau      = (qa_flag & (1 << 8))  > 0
     shadow        = (qa_flag & (1 << 12)) > 0
 
     invalid = (no_data | sunglint_mask | cloud_mask | 
-                            prob_cloud | pol_cloud | high_tau | shadow)
+                pol_cloud | high_tau | shadow)
     data_masked[invalid] = np.nan
 
     return data_masked
@@ -177,90 +176,134 @@ df_files = pd.DataFrame(file_data)
 unique_dates = df_files['date'].unique()
 sinusoidal_crs = CRS.from_proj4("+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs")
 
-# --- Processing Loop ---
-for date in tqdm(unique_dates, desc="Processing Days"):
-    daily_files = df_files[df_files['date'] == date]['filepath'].tolist()
+NUM_WORKERS = 10
 
-    # Shape: (n_bands, height, width)
-    daily_mosaics = np.zeros((n_bands, *mask_shape), dtype=np.float32)
-    daily_counts  = np.zeros((n_bands, *mask_shape), dtype=np.float32)
 
-    for f_path in daily_files:
-        try:
-            with h5py.File(f_path, 'r') as f:
-                qa_flag = f['/Image_data/QA_flag'][:]
-                geom    = f['/Geometry_data'].attrs
-                rows, cols = qa_flag.shape
-                src_transform = get_eqa_transform(geom, cols, rows)
+def process_single_date(date, daily_files):
+    """
+    Process all files for a single date and write the output mosaic.
+    
+    Parameters
+    ----------
+    date : str
+        Date string (YYYYMMDD)
+    daily_files : list
+        List of file paths for this date
+    
+    Returns
+    -------
+    tuple: (date, success, error_msg)
+        date: date string
+        success: bool
+        error_msg: str or None
+    """
+    try:
+        # Shape: (n_bands, height, width)
+        daily_mosaics = np.zeros((n_bands, *mask_shape), dtype=np.float32)
+        daily_counts  = np.zeros((n_bands, *mask_shape), dtype=np.float32)
 
-                for band_idx, band_name in enumerate(REFLECTANCE_BANDS):
-                    band_path = f'/Image_data/{band_name}'
-                    if band_path not in f:
-                        tqdm.write(f"  Band {band_name} not found in {os.path.basename(f_path)}, skipping.")
-                        continue
+        for f_path in daily_files:
+            try:
+                with h5py.File(f_path, 'r') as f:
+                    qa_flag = f['/Image_data/QA_flag'][:]
+                    geom    = f['/Geometry_data'].attrs
+                    rows, cols = qa_flag.shape
+                    src_transform = get_eqa_transform(geom, cols, rows)
 
-                    ds = f[band_path]
-                    slope  = ds.attrs['Slope']
-                    offset = ds.attrs['Offset']
-                    data   = ds[:].astype(np.float32) * slope + offset
+                    for band_idx, band_name in enumerate(REFLECTANCE_BANDS):
+                        band_path = f'/Image_data/{band_name}'
+                        if band_path not in f:
+                            continue
 
-                    # QA masking
-                    data = apply_qa_mask(data, qa_flag)
+                        ds = f[band_path]
+                        slope  = ds.attrs['Slope']
+                        offset = ds.attrs['Offset']
+                        data   = ds[:].astype(np.float32) * slope + offset
 
-                    # Physical range check
-                    data[data < 0] = np.nan
-                    data[data > 1] = np.nan
+                        # QA masking
+                        data = apply_qa_mask(data, qa_flag)
 
-                    # Reproject granule to mask grid
-                    temp_reprojected = np.full(mask_shape, np.nan, dtype=np.float32)
-                    reproject(
-                        source=data,
-                        destination=temp_reprojected,
-                        src_transform=src_transform,
-                        src_crs=sinusoidal_crs,
-                        dst_transform=mask_transform,
-                        dst_crs=mask_crs,
-                        resampling=Resampling.bilinear,
-                        src_nodata=np.nan,
-                        dst_nodata=np.nan,
-                    )
+                        # Physical range check
+                        data[data < 0] = np.nan
+                        data[data > 1] = np.nan
 
-                    valid = ~np.isnan(temp_reprojected)
-                    daily_mosaics[band_idx][valid] += temp_reprojected[valid]
-                    daily_counts[band_idx][valid]  += 1
+                        # Reproject granule to mask grid
+                        temp_reprojected = np.full(mask_shape, np.nan, dtype=np.float32)
+                        reproject(
+                            source=data,
+                            destination=temp_reprojected,
+                            src_transform=src_transform,
+                            src_crs=sinusoidal_crs,
+                            dst_transform=mask_transform,
+                            dst_crs=mask_crs,
+                            resampling=Resampling.bilinear,
+                            src_nodata=np.nan,
+                            dst_nodata=np.nan,
+                        )
 
-        except Exception as e:
-            tqdm.write(f"Error processing {os.path.basename(f_path)}: {e}")
+                        valid = ~np.isnan(temp_reprojected)
+                        daily_mosaics[band_idx][valid] += temp_reprojected[valid]
+                        daily_counts[band_idx][valid]  += 1
 
-    # Average overlapping pixels
-    with np.errstate(divide='ignore', invalid='ignore'):
-        final_daily = np.divide(
-            daily_mosaics,
-            daily_counts,
-            where=daily_counts > 0,
-            out=np.full_like(daily_mosaics, np.nan),
-        )
+            except Exception as e:
+                return date, False, f"Error processing {os.path.basename(f_path)}: {e}"
 
-    # Apply PROMICE ice mask
-    final_daily[:, immask == 0] = np.nan
+        # Average overlapping pixels
+        with np.errstate(divide='ignore', invalid='ignore'):
+            final_daily = np.divide(
+                daily_mosaics,
+                daily_counts,
+                where=daily_counts > 0,
+                out=np.full_like(daily_mosaics, np.nan),
+            )
 
-    # Save as multi-band GeoTIFF
-    out_path = os.path.join(out_folder, f"GCOMC_SR_{date}_500m.tif")
-    with rio.open(
-        out_path, 'w',
-        driver='GTiff',
-        height=mask_shape[0],
-        width=mask_shape[1],
-        count=n_bands,
-        dtype=np.float32,
-        crs=mask_crs,
-        transform=mask_transform,
-        nodata=np.nan,
-        compress='lzw',
-    ) as dst:
-        dst.write(final_daily)
-        # Store band names so downstream code can identify bands by name
-        dst.update_tags(BAND_NAMES=','.join(REFLECTANCE_BANDS))
+        # Apply PROMICE ice mask
+        final_daily[:, immask == 0] = np.nan
+
+        # Save as multi-band GeoTIFF
+        out_path = os.path.join(out_folder, f"GCOMC_SR_{date}_500m.tif")
+        with rio.open(
+            out_path, 'w',
+            driver='GTiff',
+            height=mask_shape[0],
+            width=mask_shape[1],
+            count=n_bands,
+            dtype=np.float32,
+            crs=mask_crs,
+            transform=mask_transform,
+            nodata=np.nan,
+            compress='lzw',
+        ) as dst:
+            dst.write(final_daily)
+            dst.update_tags(BAND_NAMES=','.join(REFLECTANCE_BANDS))
+
+        return date, True, None
+
+    except Exception as e:
+        return date, False, str(e)
+
+
+# --- Processing Loop with Parallelization ---
+print(f"Processing {len(unique_dates)} dates with {NUM_WORKERS} workers...")
+
+with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
+    futures = {
+        executor.submit(
+            process_single_date,
+            date,
+            df_files[df_files['date'] == date]['filepath'].tolist()
+        ): date
+        for date in unique_dates
+    }
+
+    with tqdm(total=len(unique_dates), desc="Processing Days") as pbar:
+        for future in as_completed(futures):
+            date, success, error_msg = future.result()
+
+            if not success:
+                tqdm.write(f"✗ Error processing {date}: {error_msg}")
+
+            pbar.update(1)
 
 print("Processing Complete.")
 

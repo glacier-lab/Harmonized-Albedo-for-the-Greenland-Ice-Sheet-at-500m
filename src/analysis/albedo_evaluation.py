@@ -237,49 +237,49 @@ if __name__ == '__main__':
     main()
 # %% quick check modis orbital drift MOD:2020-02-27 MYD:2021-03-18
 
-def main():
-    setup_plotting_style()
+# def main():
+#     setup_plotting_style()
     
-    # File paths
-    aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
-    rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_mod10.csv'
+#     # File paths
+#     aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
+#     rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_mod10.csv'
 
-    # Load and process data
-    df = load_and_preprocess_data(aws_path, rs_path)
-    df_pre_drift = df[df['time'] < pd.Timestamp('2020-02-27')]
-    df_post_drift = df[df['time'] >= pd.Timestamp('2020-02-27')]
+#     # Load and process data
+#     df = load_and_preprocess_data(aws_path, rs_path)
+#     df_pre_drift = df[df['time'] < pd.Timestamp('2020-02-27')]
+#     df_post_drift = df[df['time'] >= pd.Timestamp('2020-02-27')]
     
-    print(f"Total number of matched observations: {len(df)}")
-    print(f"Number of AWS stations: {df['aws'].nunique()}")
-    print(f"AWS stations: {df['aws'].unique()}\n")
+#     print(f"Total number of matched observations: {len(df)}")
+#     print(f"Number of AWS stations: {df['aws'].nunique()}")
+#     print(f"AWS stations: {df['aws'].unique()}\n")
     
-    # Create plots
-    create_overall_regression_plot(df_pre_drift)
-    # plt.show()
+#     # Create plots
+#     create_overall_regression_plot(df_pre_drift)
+#     # plt.show()
 
-    create_overall_regression_plot(df_post_drift)
-    # plt.show()
-if __name__ == '__main__':
-    main()    
-def main():
-    setup_plotting_style()
+#     create_overall_regression_plot(df_post_drift)
+#     # plt.show()
+# if __name__ == '__main__':
+#     main()    
+# def main():
+#     setup_plotting_style()
     
-    # File paths
-    aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
-    rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_myd10.csv'
+#     # File paths
+#     aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
+#     rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_myd10.csv'
 
-    # Load and process data
-    df = load_and_preprocess_data(aws_path, rs_path)
-    df_pre_drift = df[df['time'] < pd.Timestamp('2021-03-18')]
-    df_post_drift = df[df['time'] >= pd.Timestamp('2021-03-18')]
+#     # Load and process data
+#     df = load_and_preprocess_data(aws_path, rs_path)
+#     df_pre_drift = df[df['time'] < pd.Timestamp('2021-03-18')]
+#     df_post_drift = df[df['time'] >= pd.Timestamp('2021-03-18')]
     
-    print(f"Total number of matched observations: {len(df)}")
-    print(f"Number of AWS stations: {df['aws'].nunique()}")
-    print(f"AWS stations: {df['aws'].unique()}\n")
+#     print(f"Total number of matched observations: {len(df)}")
+#     print(f"Number of AWS stations: {df['aws'].nunique()}")
+#     print(f"AWS stations: {df['aws'].unique()}\n")
     
-    # Create plots
-    create_overall_regression_plot(df_pre_drift)
-    create_overall_regression_plot(df_post_drift)
-if __name__ == '__main__':
-    main()    
+#     # Create plots
+#     create_overall_regression_plot(df_pre_drift)
+#     create_overall_regression_plot(df_post_drift)
+# if __name__ == '__main__':
+#     main()    
 # %%

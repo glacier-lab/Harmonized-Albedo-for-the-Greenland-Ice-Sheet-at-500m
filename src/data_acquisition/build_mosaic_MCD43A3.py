@@ -20,17 +20,17 @@ Shunan Feng (shunan.feng@envs.au.dk)
 import os
 import glob
 import numpy as np
-from osgeo import gdal
 import pandas as pd
 import rasterio as rio
 from rasterio.warp import reproject, Resampling
 from pyproj import CRS
 from tqdm import tqdm
-
-gdal.UseExceptions()
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # %%
 def read_mask(mask_path):
+    from affine import Affine
+
     with rio.open(mask_path) as src:
         mask = src.read(1)
         transform = src.transform
@@ -44,10 +44,7 @@ def read_mask(mask_path):
         col_start, col_end = valid_cols[0], valid_cols[-1] + 1
         
         mask_cropped = mask[row_start:row_end, col_start:col_end]
-        new_transform = rio.windows.transform(
-            rio.windows.Window(col_start, row_start, col_end-col_start, row_end-row_start), 
-            transform
-        )
+        new_transform = transform * Affine.translation(col_start, row_start)
         # binary mask: 1 for ice, 0 for land/ocean
         mask_cropped = np.where(mask_cropped <= 0, 0, 1)
     
@@ -56,27 +53,19 @@ def read_mask(mask_path):
 
 def read_hdf4_subdataset(hdf_path, subdataset_name):
     """
-    Read a subdataset from an HDF4 EOS file using GDAL.
-    Returns (data array, scale_factor, add_offset, nodata, gdal_transform, gdal_crs_wkt).
+    Read a subdataset from an HDF4 EOS file.
+    Returns (data array, scale_factor, add_offset, nodata, transform, crs_wkt).
     """
     subdataset_path = f'HDF4_EOS:EOS_GRID:"{hdf_path}":MOD_Grid_BRDF:{subdataset_name}'
-    ds = gdal.Open(subdataset_path)
-    if ds is None:
-        raise FileNotFoundError(f"Cannot open subdataset: {subdataset_path}")
-    
-    band = ds.GetRasterBand(1)
-    data = band.ReadAsArray().astype(np.float32)
-    
-    # Read scale factor, offset and nodata
-    scale_factor = band.GetScale() if band.GetScale() is not None else 0.001  # default scale factor for MCD43A3 shortwave albedo
-    add_offset = band.GetOffset() if band.GetOffset() is not None else 0.0
-    nodata = band.GetNoDataValue()
-    
-    gdal_transform = ds.GetGeoTransform()
-    gdal_crs_wkt = ds.GetProjection()
-    
-    ds = None  # close
-    return data, scale_factor, add_offset, nodata, gdal_transform, gdal_crs_wkt
+    with rio.open(subdataset_path) as src:
+        data = src.read(1).astype(np.float32)
+        scale_factor = src.scales[0] if src.scales and src.scales[0] is not None else 0.001
+        add_offset = src.offsets[0] if src.offsets and src.offsets[0] is not None else 0.0
+        nodata = src.nodata
+        transform = src.transform
+        crs_wkt = src.crs.to_wkt() if src.crs is not None else None
+
+    return data, scale_factor, add_offset, nodata, transform, crs_wkt
 
 
 def apply_qa_mask(albedo_data, qa_flag):
@@ -84,21 +73,22 @@ def apply_qa_mask(albedo_data, qa_flag):
     Apply QA masking to MCD43A3 albedo data.
     
     MCD43A3 QA encoding (BRDF_Albedo_Band_Mandatory_Quality_shortwave):
-      0 = processed, good quality (full BRDF inversions)
-      1 = processed, see other QA (magnitude BRDF inversions)
-      255 = not processed (fill value)
+      Mandatory QA  0 = processed, good quality (full BRDF inversions)
+                    1 = processed, see other QA (magnitude BRDF inversions)
+                    2 = processed, good quality (full BRDF inversions, only Band 6 is fill value due to non-functional or noisy detectors)
+                    3 = processed, see other QA (magnitude BRDF inversions, only Band 6 is fill value due to non-functional or noisy detectors)
+                    4 = processed, good quality (full BRDF inversions, only Band 5 is fill value due to non-functional or noisy detectors)
+                    5 = processed, see other QA (magnitude BRDF inversions, only Band 5 is fill value due to non-functional or noisy detectors)
+                    6 = processed, good quality (full BRDF inversions, both Band5 and Band 6 are fill value due to non-functional or noisy detectors)
+                    7 = processed, see other QA (magnitude BRDF inversions, both Band 5 and Band 6 are fill value due to non-functional or noisy detectors)
     
-    Only keep pixels with QA == 0 (full inversion).
+    Keep full BRDF inversion classes, including detector-caveat classes:
+    QA in {0, 2, 4, 6}.
     """
     albedo_masked = albedo_data.copy()
-    albedo_masked[qa_flag != 0] = np.nan
+    valid_qa = np.isin(qa_flag, [0, 2, 4, 6])
+    albedo_masked[~valid_qa] = np.nan
     return albedo_masked
-
-
-def gdal_transform_to_rasterio(gdal_transform, shape):
-    """Convert GDAL GeoTransform to rasterio Affine transform."""
-    from affine import Affine
-    return Affine.from_gdal(*gdal_transform)
 
 
 #%%
@@ -126,121 +116,149 @@ QA_NAME  = 'BRDF_Albedo_Band_Mandatory_Quality_shortwave'
 
 SCALE_FACTOR = 0.001  # MCD43A3 shortwave albedo scale factor
 FILL_VALUE = 32767    # MCD43A3 fill value for 16-bit integer albedo
+NUM_WORKERS = 10
 
-# --- Processing Loop ---
-for date in tqdm(unique_dates, desc="Processing Days"):
-    daily_files = df_files[df_files['date'] == date]['filepath'].tolist()
-    
-    # Initialize empty daily mosaics for both BSA and WSA albedo
-    daily_mosaic_bsa = np.zeros(mask_shape, dtype=np.float32)
-    daily_mosaic_wsa = np.zeros(mask_shape, dtype=np.float32)
-    daily_count_bsa  = np.zeros(mask_shape, dtype=np.float32)
-    daily_count_wsa  = np.zeros(mask_shape, dtype=np.float32)
+def process_single_date(date, daily_files):
+    """Process all files for one date and write one output mosaic."""
+    try:
+        # Initialize empty daily mosaics for both BSA and WSA albedo
+        daily_mosaic_bsa = np.zeros(mask_shape, dtype=np.float32)
+        daily_mosaic_wsa = np.zeros(mask_shape, dtype=np.float32)
+        daily_count_bsa  = np.zeros(mask_shape, dtype=np.float32)
+        daily_count_wsa  = np.zeros(mask_shape, dtype=np.float32)
 
-    for f_path in daily_files:
-        try:
-            # 1. Read BSA, WSA, and QA subdatasets
-            bsa_raw, bsa_scale, bsa_offset, bsa_nodata, gdal_tf, crs_wkt = read_hdf4_subdataset(f_path, BSA_NAME)
-            wsa_raw, wsa_scale, wsa_offset, wsa_nodata, _,       _       = read_hdf4_subdataset(f_path, WSA_NAME)
-            qa_raw,  _,         _,          _,          _,       _       = read_hdf4_subdataset(f_path, QA_NAME)
+        for f_path in daily_files:
+            try:
+                # 1. Read BSA, WSA, and QA subdatasets
+                bsa_raw, bsa_scale, bsa_offset, _, src_transform, crs_wkt = read_hdf4_subdataset(f_path, BSA_NAME)
+                wsa_raw, wsa_scale, wsa_offset, _, _, _ = read_hdf4_subdataset(f_path, WSA_NAME)
+                qa_raw,  _,         _,          _, _, _ = read_hdf4_subdataset(f_path, QA_NAME)
 
-            # 2. Mask fill values before scaling
-            bsa_raw[bsa_raw == FILL_VALUE] = np.nan
-            wsa_raw[wsa_raw == FILL_VALUE] = np.nan
+                # 2. Mask fill values before scaling
+                bsa_raw[bsa_raw == FILL_VALUE] = np.nan
+                wsa_raw[wsa_raw == FILL_VALUE] = np.nan
 
-            # 3. Apply scale factor (MCD43A3 uses scale only, offset=0)
-            # compare with metadata-based scaling for test files to confirm consistency
-            if bsa_scale != SCALE_FACTOR or wsa_scale != SCALE_FACTOR:
-                tqdm.write(f"Warning: Scale factor mismatch in {os.path.basename(f_path)}. But use default values.")
-            if bsa_offset != 0.0 or wsa_offset != 0.0:
-                tqdm.write(f"Warning: Non-zero offset in {os.path.basename(f_path)}. But use default values.")
-            bsa_albedo = bsa_raw * SCALE_FACTOR
-            wsa_albedo = wsa_raw * SCALE_FACTOR
+                # 3. Apply scale factor (MCD43A3 uses scale only, offset=0)
+                if bsa_scale != SCALE_FACTOR or wsa_scale != SCALE_FACTOR:
+                    tqdm.write(f"Warning: Scale factor mismatch in {os.path.basename(f_path)}. But use default values.")
+                if bsa_offset != 0.0 or wsa_offset != 0.0:
+                    tqdm.write(f"Warning: Non-zero offset in {os.path.basename(f_path)}. But use default values.")
+                bsa_albedo = bsa_raw * SCALE_FACTOR
+                wsa_albedo = wsa_raw * SCALE_FACTOR
 
-            # 4. Apply QA mask (keep only QA==0: full BRDF inversion)
-            bsa_albedo = apply_qa_mask(bsa_albedo, qa_raw)
-            wsa_albedo = apply_qa_mask(wsa_albedo, qa_raw)
+                # 4. Apply QA mask
+                bsa_albedo = apply_qa_mask(bsa_albedo, qa_raw)
+                wsa_albedo = apply_qa_mask(wsa_albedo, qa_raw)
 
-            # 5. Physical range check
-            bsa_albedo[(bsa_albedo <= 0) | (bsa_albedo >= 1)] = np.nan
-            wsa_albedo[(wsa_albedo <= 0) | (wsa_albedo >= 1)] = np.nan
+                # 5. Physical range check
+                bsa_albedo[(bsa_albedo <= 0) | (bsa_albedo >= 1)] = np.nan
+                wsa_albedo[(wsa_albedo <= 0) | (wsa_albedo >= 1)] = np.nan
 
-            # 6. Get source CRS and transform from GDAL
-            src_crs = CRS.from_wkt(crs_wkt)
-            src_transform = gdal_transform_to_rasterio(gdal_tf, bsa_albedo.shape)
+                # 6. Get source CRS and transform from GDAL
+                src_crs = CRS.from_wkt(crs_wkt) if crs_wkt is not None else None
 
-            # 7. Reproject both albedo types to the mask grid
-            temp_bsa = np.full(mask_shape, np.nan, dtype=np.float32)
-            temp_wsa = np.full(mask_shape, np.nan, dtype=np.float32)
+                # 7. Reproject both albedo types to the mask grid
+                temp_bsa = np.full(mask_shape, np.nan, dtype=np.float32)
+                temp_wsa = np.full(mask_shape, np.nan, dtype=np.float32)
 
-            reproject(
-                source=bsa_albedo,
-                destination=temp_bsa,
-                src_transform=src_transform,
-                src_crs=src_crs,
-                dst_transform=mask_transform,
-                dst_crs=mask_crs,
-                resampling=Resampling.bilinear,
-                src_nodata=np.nan,
-                dst_nodata=np.nan
-            )
-            reproject(
-                source=wsa_albedo,
-                destination=temp_wsa,
-                src_transform=src_transform,
-                src_crs=src_crs,
-                dst_transform=mask_transform,
-                dst_crs=mask_crs,
-                resampling=Resampling.bilinear,
-                src_nodata=np.nan,
-                dst_nodata=np.nan
-            )
+                reproject(
+                    source=bsa_albedo,
+                    destination=temp_bsa,
+                    src_transform=src_transform,
+                    src_crs=src_crs,
+                    dst_transform=mask_transform,
+                    dst_crs=mask_crs,
+                    resampling=Resampling.bilinear,
+                    src_nodata=np.nan,
+                    dst_nodata=np.nan
+                )
+                reproject(
+                    source=wsa_albedo,
+                    destination=temp_wsa,
+                    src_transform=src_transform,
+                    src_crs=src_crs,
+                    dst_transform=mask_transform,
+                    dst_crs=mask_crs,
+                    resampling=Resampling.bilinear,
+                    src_nodata=np.nan,
+                    dst_nodata=np.nan
+                )
 
-            # 8. Accumulate valid pixels for daily averaging
-            valid_bsa = ~np.isnan(temp_bsa)
-            valid_wsa = ~np.isnan(temp_wsa)
+                # 8. Accumulate valid pixels for daily averaging
+                valid_bsa = ~np.isnan(temp_bsa)
+                valid_wsa = ~np.isnan(temp_wsa)
 
-            daily_mosaic_bsa[valid_bsa] += temp_bsa[valid_bsa]
-            daily_mosaic_wsa[valid_wsa] += temp_wsa[valid_wsa]
-            daily_count_bsa[valid_bsa]  += 1
-            daily_count_wsa[valid_wsa]  += 1
+                daily_mosaic_bsa[valid_bsa] += temp_bsa[valid_bsa]
+                daily_mosaic_wsa[valid_wsa] += temp_wsa[valid_wsa]
+                daily_count_bsa[valid_bsa]  += 1
+                daily_count_wsa[valid_wsa]  += 1
 
-        except Exception as e:
-            tqdm.write(f"Error processing {os.path.basename(f_path)}: {type(e).__name__}: {e}")
+            except Exception as e:
+                return date, False, f"Error processing {os.path.basename(f_path)}: {type(e).__name__}: {e}"
 
-    # Calculate mean for overlapping tiles
-    with np.errstate(divide='ignore', invalid='ignore'):
-        final_bsa = np.divide(daily_mosaic_bsa, daily_count_bsa,
-                              where=daily_count_bsa > 0,
-                              out=np.full_like(daily_mosaic_bsa, np.nan))
-        final_wsa = np.divide(daily_mosaic_wsa, daily_count_wsa,
-                              where=daily_count_wsa > 0,
-                              out=np.full_like(daily_mosaic_wsa, np.nan))
+        # Calculate mean for overlapping tiles
+        with np.errstate(divide='ignore', invalid='ignore'):
+            final_bsa = np.divide(daily_mosaic_bsa, daily_count_bsa,
+                                  where=daily_count_bsa > 0,
+                                  out=np.full_like(daily_mosaic_bsa, np.nan))
+            final_wsa = np.divide(daily_mosaic_wsa, daily_count_wsa,
+                                  where=daily_count_wsa > 0,
+                                  out=np.full_like(daily_mosaic_wsa, np.nan))
 
-    # Apply PROMICE ice mask
-    final_bsa[immask == 0] = np.nan
-    final_wsa[immask == 0] = np.nan
+        # Apply PROMICE ice mask
+        final_bsa[immask == 0] = np.nan
+        final_wsa[immask == 0] = np.nan
 
-    # Save as GeoTIFF with 2 bands
-    out_path = os.path.join(out_folder, f"MCD43A3_Albedo_{date}_500m.tif")
-    with rio.open(
-        out_path, 'w',
-        driver='GTiff',
-        height=mask_shape[0],
-        width=mask_shape[1],
-        count=2,
-        dtype=np.float32,
-        crs=mask_crs,
-        transform=mask_transform,
-        nodata=np.nan,
-        compress='lzw'
-    ) as dst:
-        dst.write(final_bsa, 1)
-        dst.write(final_wsa, 2)
-        dst.set_band_description(1, 'BSA_shortwave')
-        dst.set_band_description(2, 'WSA_shortwave')
+        # Save as GeoTIFF with 2 bands
+        out_path = os.path.join(out_folder, f"MCD43A3_Albedo_{date}_500m.tif")
+        with rio.open(
+            out_path, 'w',
+            driver='GTiff',
+            height=mask_shape[0],
+            width=mask_shape[1],
+            count=2,
+            dtype=np.float32,
+            crs=mask_crs,
+            transform=mask_transform,
+            nodata=np.nan,
+            compress='lzw'
+        ) as dst:
+            dst.write(final_bsa, 1)
+            dst.write(final_wsa, 2)
+            dst.set_band_description(1, 'BSA_shortwave')
+            dst.set_band_description(2, 'WSA_shortwave')
 
-print("Processing Complete.")
+        return date, True, None
+
+    except Exception as e:
+        return date, False, str(e)
+
+
+def main():
+    print(f"Processing {len(unique_dates)} dates with {NUM_WORKERS} workers...")
+
+    with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
+        futures = {
+            executor.submit(
+                process_single_date,
+                date,
+                df_files[df_files['date'] == date]['filepath'].tolist()
+            ): date
+            for date in unique_dates
+        }
+
+        with tqdm(total=len(unique_dates), desc="Processing Days") as pbar:
+            for future in as_completed(futures):
+                date, success, error_msg = future.result()
+                if not success:
+                    tqdm.write(f"Error processing {date}: {error_msg}")
+                pbar.update(1)
+
+    print("Processing Complete.")
+
+
+if __name__ == '__main__':
+    main()
 
 #%%
 # Test code (uncomment to debug)
