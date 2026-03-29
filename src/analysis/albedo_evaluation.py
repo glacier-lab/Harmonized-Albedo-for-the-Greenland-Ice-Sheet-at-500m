@@ -1,4 +1,22 @@
+"""
+Albedo evaluation against PROMICE AWS observations.
+
+This script compares AWS albedo with point-to-pixel remote sensing albedo exported
+by extract_point2pix.py.
+
+How to use:
+- Set SENSOR to one of SENSOR_TO_POINT2PIX keys.
+- Optionally set RS_PATH_OVERRIDE to a direct CSV path.
+- Run the script directly.
+
+Inputs:
+- AWS_PATH: Daily AWS observations with columns including time, aws, albedo.
+- Point2pix CSV: Exported CSV with columns including time, aws, and one albedo_*
+    column.
+"""
+
 #%% 
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -6,10 +24,49 @@ import seaborn as sns
 import numpy as np
 import cmocean 
 
+
+DEFAULT_AWS_PATH = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
+DEFAULT_POINT2PIX_DIR = '/data_3/shunan_2/AU/hsa500m/point2pix'
+DEFAULT_SENSOR = 'SICE_REBUILD'  # Change this to switch sensors (e.g., 'MOD10A1', 'MYD10A1', etc.)
+
+# Edit these values to switch input data without using command line arguments.
+AWS_PATH = DEFAULT_AWS_PATH
+POINT2PIX_DIR = DEFAULT_POINT2PIX_DIR
+SENSOR = DEFAULT_SENSOR
+# Optional direct override. Set to a CSV path to bypass SENSOR mapping.
+RS_PATH_OVERRIDE = None
+
+SENSOR_TO_POINT2PIX = {
+    'MOD10A1': 'point2pix_mod10a1.csv',
+    'MYD10A1': 'point2pix_myd10a1.csv',
+    'MCD43A3_BLUESKY': 'point2pix_mcd43a3_bluesky.csv',
+    'VIIRS_VJ143MA3_BLUESKY': 'point2pix_viirs_vj143ma3_bluesky.csv',
+    'VIIRS_VNP43MA3_BLUESKY': 'point2pix_viirs_vnp43ma3_bluesky.csv',
+    'GCOMC_SR_ALBEDO': 'point2pix_gcomc_sr_albedo.csv',
+    'SICE_REBUILD': 'point2pix_sice_rebuild.csv',
+}
+
 #%% 
 def setup_plotting_style():
     """Set up the default plotting style."""
     sns.set_theme(style="darkgrid", font_scale=1.5)
+
+
+def get_rs_path_from_sensor(sensor, point2pix_dir):
+    """Resolve the point2pix CSV path from a sensor name."""
+    sensor_key = sensor.upper()
+    if sensor_key not in SENSOR_TO_POINT2PIX:
+        valid = ', '.join(SENSOR_TO_POINT2PIX.keys())
+        raise ValueError(f"Unsupported sensor '{sensor}'. Valid options: {valid}")
+
+    rs_path = os.path.join(point2pix_dir, SENSOR_TO_POINT2PIX[sensor_key])
+    if not os.path.exists(rs_path):
+        raise FileNotFoundError(
+            f"Point2pix CSV not found for sensor '{sensor_key}': {rs_path}\n"
+            "Run extract_point2pix.py for this sensor first or provide --rs-path."
+        )
+
+    return rs_path, sensor_key
 
 def load_and_preprocess_data(aws_path, rs_path):
     """Load and preprocess AWS and remote sensing albedo data."""
@@ -67,7 +124,7 @@ def calculate_metrics(y_true, y_pred):
         'n': len(y_true)
     }
 
-def create_overall_regression_plot(df):
+def create_overall_regression_plot(df, sensor_name):
     """Create overall regression plot comparing remote sensing and AWS albedo."""
     fig, ax = plt.subplots(figsize=(10, 10))
     
@@ -90,7 +147,7 @@ def create_overall_regression_plot(df):
     ax.set_ylim((0, 1))
     plt.ylabel('AWS Albedo')
     plt.xlabel('Remote Sensing Albedo')
-    plt.title('Remote Sensing vs AWS Albedo Comparison')
+    plt.title(sensor_name)
     # plt.legend()
     
     # Add statistics text box
@@ -211,10 +268,18 @@ def plot_time_series(df, aws, ax):
 def main():
     """Main function to run the analysis."""
     setup_plotting_style()
-    
+
     # File paths
-    aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
-    rs_path =  '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_mod10.csv'
+    aws_path = AWS_PATH
+    if RS_PATH_OVERRIDE:
+        rs_path = RS_PATH_OVERRIDE
+        sensor_name = 'CUSTOM_RS_PATH'
+    else:
+        rs_path, sensor_name = get_rs_path_from_sensor(SENSOR, POINT2PIX_DIR)
+
+    print(f"Sensor: {sensor_name}")
+    print(f"AWS input: {aws_path}")
+    print(f"Remote sensing input: {rs_path}")
 
     # Load and process data
     df = load_and_preprocess_data(aws_path, rs_path)
@@ -224,14 +289,14 @@ def main():
     print(f"AWS stations: {df['aws'].unique()}\n")
     
     # Create plots
-    create_overall_regression_plot(df)
+    create_overall_regression_plot(df, sensor_name)
     # plt.show()
     
-    create_station_subplots(df)
-    # plt.show()
+    # create_station_subplots(df)
+    # # plt.show()
     
-    create_time_series_plots(df)
-    # plt.show()
+    # create_time_series_plots(df)
+    # # plt.show()
 
 if __name__ == '__main__':
     main()

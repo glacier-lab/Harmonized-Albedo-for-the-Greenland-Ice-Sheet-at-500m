@@ -147,8 +147,8 @@ def process_single_date(date, daily_files):
                 wsa_albedo = wsa_raw * SCALE_FACTOR
 
                 # 4. Apply QA mask
-                bsa_albedo = apply_qa_mask(bsa_albedo, qa_raw)
-                wsa_albedo = apply_qa_mask(wsa_albedo, qa_raw)
+                # bsa_albedo = apply_qa_mask(bsa_albedo, qa_raw)
+                # wsa_albedo = apply_qa_mask(wsa_albedo, qa_raw)
 
                 # 5. Physical range check
                 bsa_albedo[(bsa_albedo <= 0) | (bsa_albedo >= 1)] = np.nan

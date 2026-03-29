@@ -111,8 +111,8 @@ def fit_mlr_and_validate(df, feature_cols, test_size=0.2, random_state=42):
     test_metrics = calculate_metrics(y_test, yhat_test)
 
     # Equation text
-    coef_terms = [f"{coef:.6f}*{name}" for coef, name in zip(model.coef_, feature_cols)]
-    equation = "albedo_pred = " + f"{model.intercept_:.6f} + " + " + ".join(coef_terms)
+    coef_terms = [f"{coef:.4f}*{name}" for coef, name in zip(model.coef_, feature_cols)]
+    equation = "albedo_pred = " + f"{model.intercept_:.4f} + " + " + ".join(coef_terms)
 
     out = {
         "model": model,
@@ -152,12 +152,12 @@ def create_mlr_train_test_plot(result):
     m = result["train_metrics"]
     txt = (
         f'N = {m["n"]}\n'
-        f'$R^2$ = {m["r_squared"]:.3f}\n'
-        f'RMSE = {m["rmse"]:.3f}\n'
-        f'MAE = {m["mae"]:.3f}\n'
-        f'Bias = {m["bias"]:.3f}\n'
-        f'Slope = {m["slope"]:.3f}\n'
-        f'Intercept = {m["intercept"]:.3f}'
+        f'$R^2$ = {m["r_squared"]:.4f}\n'
+        f'RMSE = {m["rmse"]:.4f}\n'
+        f'MAE = {m["mae"]:.4f}\n'
+        f'Bias = {m["bias"]:.4f}\n'
+        f'Slope = {m["slope"]:.4f}\n'
+        f'Intercept = {m["intercept"]:.4f}'
     )
     ax.text(
         0.05, 0.95, txt, transform=ax.transAxes, verticalalignment="top",
@@ -184,12 +184,12 @@ def create_mlr_train_test_plot(result):
     m = result["test_metrics"]
     txt = (
         f'N = {m["n"]}\n'
-        f'$R^2$ = {m["r_squared"]:.3f}\n'
-        f'RMSE = {m["rmse"]:.3f}\n'
-        f'MAE = {m["mae"]:.3f}\n'
-        f'Bias = {m["bias"]:.3f}\n'
-        f'Slope = {m["slope"]:.3f}\n'
-        f'Intercept = {m["intercept"]:.3f}'
+        f'$R^2$ = {m["r_squared"]:.4f}\n'
+        f'RMSE = {m["rmse"]:.4f}\n'
+        f'MAE = {m["mae"]:.4f}\n'
+        f'Bias = {m["bias"]:.4f}\n'
+        f'Slope = {m["slope"]:.4f}\n'
+        f'Intercept = {m["intercept"]:.4f}'
     )
     ax.text(
         0.05, 0.95, txt, transform=ax.transAxes, verticalalignment="top",
@@ -254,3 +254,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# %%

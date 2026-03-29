@@ -10,16 +10,22 @@ import os
 from sklearn.model_selection import train_test_split
 
 sns.set_theme(style="darkgrid", font_scale=1.5, font="Arial")
+plt.ioff()
 # %%
 aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
-mod10_path = '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_mod10.csv'
-myd10_path = '/data_3/shunan_2/AU/hsa500m/MODIS/albedo_myd10.csv'
-sice_path = '/data_3/shunan_2/AU/hsa500m/SICE/albedo_sice.csv'
-gcomc_path = '/data_3/shunan_2/AU/hsa500m/GCOMC/albedo_gcomc.csv'
-carra_path = '/data_3/shunan_2/AU/hsa500m/CARRA/albedo_carra.csv'
+mod10_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_mod10a1.csv'
+myd10_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_myd10a1.csv'
+mcd43a3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_mcd43a3_bluesky.csv'
+vj143ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vj143ma3_bluesky.csv'
+vnp43ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vnp43ma3_bluesky.csv'
+gcomc_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_gcomc_sr_albedo.csv'
+sice_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_sice_rebuild.csv'
+PLOT_FIGURES = False
 
 # Folder to save calibration figures
+calibration_output_folder = '/data_3/shunan_2/AU/hsa500m/calibration'
 figure_output_folder = '/data_3/shunan_2/AU/hsa500m/calibration/print'
+os.makedirs(calibration_output_folder, exist_ok=True)
 os.makedirs(figure_output_folder, exist_ok=True)
 
 def load_and_preprocess_data(albedo_path):
@@ -160,6 +166,8 @@ def create_calibration_plot(scenario_id, scenario_name, df_train, df_test, slope
     fig_path = os.path.join(figure_output_folder, f'scenario_{scenario_id:03d}_calibration.png')
     fig.savefig(fig_path, dpi=300, bbox_inches='tight')
     print(f"  Figure saved to: {fig_path}")
+    fig_path = os.path.join(figure_output_folder, f'scenario_{scenario_id:03d}_calibration.pdf')
+    fig.savefig(fig_path, dpi=300, bbox_inches='tight')
     plt.close(fig)
     
     return test_calib_metrics
@@ -240,9 +248,9 @@ def is_valid_combination(sensors):
 #%% calibration coefficient calculation
 '''
 The workflow for calculating calibration coefficients involves the following steps:
-1. Load and preprocess albedo data from various remote sensing sources (MOD10, MYD10, SICE, GCOMC, CARRA) and AWS data.
+1. Load and preprocess albedo data from various remote sensing sources and AWS data.
 2. Iterate through the combination of each sensor and mark the scenario using unique identifiers.
-3. For each combination, calculate the average daily remote sensing albedo value, but CARRA is on its own and not combined with other sensors.
+3. For each combination, calculate the average daily remote sensing albedo value.
 4. Merge the remote sensing albedo data with AWS albedo data based on AWS station and time.
 5. Split data into training and testing sets.
 6. Derive calibration coefficients from training data.
@@ -252,9 +260,11 @@ The workflow for calculating calibration coefficients involves the following ste
 df_aws = load_and_preprocess_data(aws_path)
 df_mod10 = load_and_preprocess_data(mod10_path)
 df_myd10 = load_and_preprocess_data(myd10_path)
+df_mcd43a3 = load_and_preprocess_data(mcd43a3_path)
+df_vj143ma3 = load_and_preprocess_data(vj143ma3_path)
+df_vnp43ma3 = load_and_preprocess_data(vnp43ma3_path)
 df_sice = load_and_preprocess_data(sice_path)
 df_gcomc = load_and_preprocess_data(gcomc_path)
-df_carra = load_and_preprocess_data(carra_path)
 
 # Prepare sensor data with expanded MODIS scenarios for orbital drift
 # First, identify years for MODIS orbital drift scenarios
@@ -264,9 +274,12 @@ myd10_years = sorted([y for y in df_myd10['time'].dt.year.unique() if y >= 2021]
 # Create expanded sensor list with MODIS year-specific scenarios
 sensors_expanded = {}
 
-# Add base sensors (SICE and GCOMC - no orbital drift issues)
+# Add base sensors with no orbital drift split
 sensors_expanded['sice'] = {'data': df_sice, 'year_filter': None}
 sensors_expanded['gcomc'] = {'data': df_gcomc, 'year_filter': None}
+sensors_expanded['mcd43a3_bluesky'] = {'data': df_mcd43a3, 'year_filter': None}
+sensors_expanded['viirs_vj143ma3_bluesky'] = {'data': df_vj143ma3, 'year_filter': None}
+sensors_expanded['viirs_vnp43ma3_bluesky'] = {'data': df_vnp43ma3, 'year_filter': None}
 
 # Add MOD10 scenarios - pre-drift and yearly drift scenarios
 mod10_pre_drift = df_mod10[df_mod10['time'].dt.year < 2020]
@@ -293,15 +306,15 @@ for year in myd10_years:
 print(f"Expanded sensor list: {list(sensors_expanded.keys())}")
 
 # Generate all possible combinations (1 to n sensors)
-# CARRA is kept separate and not combined with other sensors
 
 scenarios = []
 
-# CARRA as standalone scenario
-scenarios.append(['carra'])
+# Scenario 0 placeholder (empty), so CARRA can be added later if needed.
+scenarios.append([])
 
-# All combinations of non-CARRA sensors (excluding CARRA from combinations)
+# All combinations of configured sensors
 non_carra_sensors = [s for s in sensors_expanded.keys()]
+sensor_indicator_columns = sorted(non_carra_sensors)
 
 for r in range(1, len(non_carra_sensors) + 1):
     for combo in combinations(non_carra_sensors, r):
@@ -310,13 +323,14 @@ for r in range(1, len(non_carra_sensors) + 1):
             scenarios.append(list(combo))
 
 print(f"Total number of valid scenarios: {len(scenarios)}")
+print(f"Plot figures: {PLOT_FIGURES}")
 
 #%% move on to processing each scenario and calculating calibration coefficients
 # Initialize results storage with scenario IDs
 calibration_results = []
 
 # Process each scenario
-for scenario_id, scenario in enumerate(scenarios, start=1):
+for scenario_id, scenario in enumerate(scenarios, start=0):
     scenario_name = '_'.join(scenario)
     print(f"\nProcessing scenario {scenario_id}/{len(scenarios)}: {scenario_name}")
     
@@ -324,12 +338,8 @@ for scenario_id, scenario in enumerate(scenarios, start=1):
     combined_rs_data = []
     
     for sensor in scenario:
-        if sensor == 'carra':
-            # CARRA is treated separately
-            df_sensor = df_carra.copy()
-        else:
-            # Use expanded sensor data
-            df_sensor = sensors_expanded[sensor]['data'].copy()
+        # Use expanded sensor data
+        df_sensor = sensors_expanded[sensor]['data'].copy()
         
         if len(df_sensor) > 0:
             combined_rs_data.append(df_sensor[['time', 'aws', 'albedo_rs']])
@@ -376,11 +386,18 @@ for scenario_id, scenario in enumerate(scenarios, start=1):
     intercept = train_metrics['intercept']
     
     try:
-        # Create calibration plot
-        test_calib_metrics = create_calibration_plot(
-            scenario_id, scenario_name, df_train, df_test, 
-            slope, intercept, train_metrics, train_metrics
-        )
+        if PLOT_FIGURES:
+            # Create calibration plot
+            test_calib_metrics = create_calibration_plot(
+                scenario_id, scenario_name, df_train, df_test,
+                slope, intercept, train_metrics, train_metrics
+            )
+        else:
+            # Calculate calibrated test metrics without plotting.
+            df_test_calib = df_test.copy()
+            df_test_calib['albedo_rs_calibrated'] = slope * df_test['albedo_rs'] + intercept
+            df_test_calib['albedo_rs_calibrated'] = df_test_calib['albedo_rs_calibrated'].clip(0, 1)
+            test_calib_metrics = calculate_metrics(df_test['albedo_aws'], df_test_calib['albedo_rs_calibrated'])
         
         # Store results
         result = {
@@ -399,9 +416,16 @@ for scenario_id, scenario in enumerate(scenarios, start=1):
             'test_calib_rmse': test_calib_metrics['rmse'],
             'test_calib_mae': test_calib_metrics['mae'],
             'test_calib_bias': test_calib_metrics['bias'],
+            'train_slope': train_metrics['slope'],
+            'train_intercept': train_metrics['intercept'],
+            'test_calib_slope': test_calib_metrics['slope'],
+            'test_calib_intercept': test_calib_metrics['intercept'],
             'slope': slope,
             'intercept': intercept
         }
+
+        for sensor_name in sensor_indicator_columns:
+            result[sensor_name] = int(sensor_name in scenario)
         
         calibration_results.append(result)
         
@@ -422,10 +446,21 @@ print(f"\n{'='*80}")
 print(f"Calibration coefficient calculation completed!")
 print(f"Total scenarios processed: {len(df_calibration)}")
 print(f"\nTop 10 performing scenarios (by test R²):")
-print(df_calibration[['scenario_id', 'scenario', 'train_r_squared', 'test_calib_r_squared', 'slope', 'intercept']].head(10).to_string(index=False))
+print(df_calibration[
+    [
+        'scenario_id',
+        'scenario',
+        'train_r_squared',
+        'test_calib_r_squared',
+        'train_slope',
+        'train_intercept',
+        'test_calib_slope',
+        'test_calib_intercept',
+    ]
+].head(10).to_string(index=False))
 
 # Save detailed results to CSV
-output_path = '/data_3/shunan_2/AU/hsa500m/calibration_coefficients.csv'
+output_path = os.path.join(calibration_output_folder, 'calibration_coefficients.csv')
 df_calibration.to_csv(output_path, index=False)
 print(f"\nDetailed results saved to: {output_path}")
 
