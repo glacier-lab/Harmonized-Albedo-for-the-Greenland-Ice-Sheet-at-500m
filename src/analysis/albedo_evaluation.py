@@ -27,7 +27,7 @@ import cmocean
 
 DEFAULT_AWS_PATH = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
 DEFAULT_POINT2PIX_DIR = '/data_3/shunan_2/AU/hsa500m/point2pix'
-DEFAULT_SENSOR = 'SICE_REBUILD'  # Change this to switch sensors (e.g., 'MOD10A1', 'MYD10A1', etc.)
+DEFAULT_SENSOR = 'GCOM-C'  # Change this to switch sensors (e.g., 'MOD10A1', 'MYD10A1', etc.)
 
 # Edit these values to switch input data without using command line arguments.
 AWS_PATH = DEFAULT_AWS_PATH
@@ -39,11 +39,11 @@ RS_PATH_OVERRIDE = None
 SENSOR_TO_POINT2PIX = {
     'MOD10A1': 'point2pix_mod10a1.csv',
     'MYD10A1': 'point2pix_myd10a1.csv',
-    'MCD43A3_BLUESKY': 'point2pix_mcd43a3_bluesky.csv',
-    'VIIRS_VJ143MA3_BLUESKY': 'point2pix_viirs_vj143ma3_bluesky.csv',
-    'VIIRS_VNP43MA3_BLUESKY': 'point2pix_viirs_vnp43ma3_bluesky.csv',
-    'GCOMC_SR_ALBEDO': 'point2pix_gcomc_sr_albedo.csv',
-    'SICE_REBUILD': 'point2pix_sice_rebuild.csv',
+    'MCD43A3': 'point2pix_mcd43a3_bluesky.csv',
+    'VJ143MA3': 'point2pix_viirs_vj143ma3_bluesky.csv',
+    'VNP43MA3': 'point2pix_viirs_vnp43ma3_bluesky.csv',
+    'GCOM-C': 'point2pix_gcomc_sr_albedo.csv',
+    'SICE': 'point2pix_sice_rebuild.csv',
 }
 
 #%% 
@@ -290,6 +290,8 @@ def main():
     
     # Create plots
     create_overall_regression_plot(df, sensor_name)
+    plt.savefig(f"albedo_evaluation_{sensor_name}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"albedo_evaluation_{sensor_name}.pdf", dpi=300, bbox_inches='tight')
     # plt.show()
     
     # create_station_subplots(df)
