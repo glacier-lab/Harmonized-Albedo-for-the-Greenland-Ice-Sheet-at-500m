@@ -35,13 +35,14 @@ CEN_REINSTALLATION_DATE = pd.Timestamp("2017-07-25")
 
 # Choose one or more sensors from SENSOR_CONFIGS keys.
 SENSORS_TO_RUN = [
-    "MOD10A1",
-    "MYD10A1",
-    "MCD43A3_BLUESKY",
-    "VIIRS_VJ143MA3_BLUESKY",
-    "VIIRS_VNP43MA3_BLUESKY",
-    "GCOMC_SR_ALBEDO",
-    "SICE_REBUILD",
+    # "MOD10A1",
+    # "MYD10A1",
+    # "MCD43A3_BLUESKY",
+    # "VIIRS_VJ143MA3_BLUESKY",
+    # "VIIRS_VNP43MA3_BLUESKY",
+    # "GCOMC_SR_ALBEDO",
+    # "SICE_REBUILD",
+    "HSA500M_GAPFILLED",
 ]
 
 # Band mapping supports two modes:
@@ -109,6 +110,16 @@ SENSOR_CONFIGS = {
         "output_csv": "point2pix_sice_rebuild.csv",
         "bands": [
             {"column": "albedo_sice_rebuild", "index": 1},
+        ],
+    },
+    "HSA500M_GAPFILLED": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff",
+        "glob": "hsa500m_gapfilled_*.tif",
+        "date_regex": r"hsa500m_gapfilled_(\d{8})\.tif",
+        "output_csv": "point2pix_hsa500m_gapfilled.csv",
+        "bands": [
+            {"column": "albedo_hsa500m_gapfilled", "index": 1},
+            {"column": "scenario_hsa500m_gapfilled", "index": 2},
         ],
     },
 }

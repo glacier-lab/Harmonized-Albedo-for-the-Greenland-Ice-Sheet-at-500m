@@ -27,7 +27,7 @@ import cmocean
 
 DEFAULT_AWS_PATH = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
 DEFAULT_POINT2PIX_DIR = '/data_3/shunan_2/AU/hsa500m/point2pix'
-DEFAULT_SENSOR = 'GCOM-C'  # Change this to switch sensors (e.g., 'MOD10A1', 'MYD10A1', etc.)
+DEFAULT_SENSOR = 'HSA500m'  # Change this to switch sensors (e.g., 'MOD10A1', 'MYD10A1', etc.)
 
 # Edit these values to switch input data without using command line arguments.
 AWS_PATH = DEFAULT_AWS_PATH
@@ -44,6 +44,7 @@ SENSOR_TO_POINT2PIX = {
     'VNP43MA3': 'point2pix_viirs_vnp43ma3_bluesky.csv',
     'GCOM-C': 'point2pix_gcomc_sr_albedo.csv',
     'SICE': 'point2pix_sice_rebuild.csv',
+    'HSA500m': 'point2pix_hsa500m_gapfilled.csv'
 }
 
 #%% 
@@ -55,11 +56,12 @@ def setup_plotting_style():
 def get_rs_path_from_sensor(sensor, point2pix_dir):
     """Resolve the point2pix CSV path from a sensor name."""
     sensor_key = sensor.upper()
-    if sensor_key not in SENSOR_TO_POINT2PIX:
+    sensor_to_point2pix_upper = {k.upper(): v for k, v in SENSOR_TO_POINT2PIX.items()}
+    if sensor_key not in sensor_to_point2pix_upper:
         valid = ', '.join(SENSOR_TO_POINT2PIX.keys())
         raise ValueError(f"Unsupported sensor '{sensor}'. Valid options: {valid}")
 
-    rs_path = os.path.join(point2pix_dir, SENSOR_TO_POINT2PIX[sensor_key])
+    rs_path = os.path.join(point2pix_dir, sensor_to_point2pix_upper[sensor_key])
     if not os.path.exists(rs_path):
         raise FileNotFoundError(
             f"Point2pix CSV not found for sensor '{sensor_key}': {rs_path}\n"
@@ -294,11 +296,11 @@ def main():
     plt.savefig(f"albedo_evaluation_{sensor_name}.pdf", dpi=300, bbox_inches='tight')
     # plt.show()
     
-    # create_station_subplots(df)
-    # # plt.show()
+    create_station_subplots(df)
+    # plt.show()
     
-    # create_time_series_plots(df)
-    # # plt.show()
+    create_time_series_plots(df)
+    # plt.show()
 
 if __name__ == '__main__':
     main()

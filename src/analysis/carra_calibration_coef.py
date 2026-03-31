@@ -95,6 +95,8 @@ print(f"slope: {results.slope}")
 print(f"intercept: {results.intercept}")
 print(f"r2: {results.rvalue**2}")
 print(f"p-value: {results.pvalue}")
+print(f"Number of points used in regression: {df.count(selection=fit_selection):,}")
+print(f"Number of points in full dataset: {df.count():,}")
 print(results)
 
 #%%
@@ -129,6 +131,8 @@ print(f"slope: {results.slope}")
 print(f"intercept: {results.intercept}")
 print(f"r2: {results.rvalue**2}")
 print(f"p-value: {results.pvalue}")
+print(f"Number of points used in regression: {df.count(selection=validation_selection):,}")
+print(f"Number of points in full dataset: {df.count():,}")
 print(results)
 
 

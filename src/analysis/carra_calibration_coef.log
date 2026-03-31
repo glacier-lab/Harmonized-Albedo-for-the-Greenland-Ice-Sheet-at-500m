@@ -1,0 +1,18 @@
+nohup: ignoring input
+/data/shunan/conda-envs/bigdata/lib/python3.10/site-packages/vaex/functions.py:96: RuntimeWarning: divide by zero encountered in log
+  result = function(*numpy_data, **kwargs)
+slope: 0.8672813849882294
+intercept: 0.07452984468785329
+r2: 0.6241270653071929
+p-value: 0.0
+Number of points used in regression: 4,464,833,345
+Number of points in full dataset: 27,046,685,120
+RegressionResult(slope=0.8672813849882294, intercept=0.07452984468785329, rvalue=0.790017129755547, pvalue=0.0)
+
+slope: 1.0000307867620086
+intercept: -6.279913572604379e-06
+r2: 0.6241863289645839
+p-value: 0.0
+Number of points used in regression: 1,914,043,671
+Number of points in full dataset: 11,591,442,352
+RegressionResult(slope=1.0000307867620086, intercept=-6.279913572604379e-06, rvalue=0.7900546366958325, pvalue=0.0)
