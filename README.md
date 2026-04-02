@@ -59,10 +59,10 @@ Unlike other albedo prducts, GCOM-C albedo is derived from surface reflectance p
 - [`src/data_acquisition/narrow2broadband_gcomcSR.py`](src/data_acquisition/narrow2broadband_gcomcSR.py): Develop and test the narrow-to-broadband conversion for GCOM-C SR products using PROMICE/GC-Net AWS data.
 - [`src/data_acquisition/apply_n2b_gcomcsr.py`](src/data_acquisition/apply_n2b_gcomcsr.py): Apply the narrow-to-broadband conversion to the GCOM-C SR mosaic to produce the GCOM-C albedo mosaic.
 
-### [src/analysis](src/analysis) - Main analysis scripts for point-to-pixel extraction, calibration coefficient calculation, and gapfilled product assembly.
+### [src/data_production](src/data_production) - Main analysis scripts for point-to-pixel extraction, calibration coefficient calculation, and gapfilled product assembly.
 
--[`src/analysis/extract_point2pix.py`](src/analysis/extract_point2pix.py): Extracts satellite and CARRA albedo values at PROMICE/GC-Net AWS station locations, creating point-to-pixel datasets for calibration.
--[`src/analysis/calculate_calibration_coef.py`](src/analysis/calculate_calibration_coef.py): Calculates calibration coefficients for each unique sensor combination scenario using the point-to-pixel datasets. This is a critical step.
+-[`src/data_production/extract_point2pix.py`](src/data_production/extract_point2pix.py): Extracts satellite and CARRA albedo values at PROMICE/GC-Net AWS station locations, creating point-to-pixel datasets for calibration.
+-[`src/data_production/calculate_calibration_coef.py`](src/data_production/calculate_calibration_coef.py): Calculates calibration coefficients for each unique sensor combination scenario using the point-to-pixel datasets. This is a critical step.
 
 **Process**:
 1. Generates all valid sensor combinations (accounts for orbital drift)
@@ -79,11 +79,11 @@ Unlike other albedo prducts, GCOM-C albedo is derived from surface reflectance p
 - MYD10A1: Pre-2021 data combined; post-2021 treated annually
 - MCD43A3: Follows MOD10A1 timeline (drift starts 2020)
 
--[`src/analysis/build_carra_hsa_comparison.py`](src/analysis/build_carra_hsa_comparison.py): Once the calibration coefficients are calculated, this script applies the calibration the satllite albedo and produces the daily albedo mosatic. It then compares the HSA500m (with gaps) with the paired daily CARRA albedo. Paired pixels are converted into one-dimensional arrays, split into training (70%) and testing (30%) data, and saved as hdf5 files. 
+-[`src/data_production/build_carra_hsa_comparison.py`](src/data_production/build_carra_hsa_comparison.py): Once the calibration coefficients are calculated, this script applies the calibration the satllite albedo and produces the daily albedo mosatic. It then compares the HSA500m (with gaps) with the paired daily CARRA albedo. Paired pixels are converted into one-dimensional arrays, split into training (70%) and testing (30%) data, and saved as hdf5 files. 
 
--[`src/analysis/carra_calibration_coef.py`](src/analysis/carra_calibration_coef.py): This script uses the paired HSA500m-CARRA data to calculate the calibration coefficients for CARRA. 
+-[`src/data_production/carra_calibration_coef.py`](src/data_production/carra_calibration_coef.py): This script uses the paired HSA500m-CARRA data to calculate the calibration coefficients for CARRA. 
 
--[`src/analysis/build_hsa500m_gapfilled.py`](src/analysis/build_hsa500m_gapfilled.py): Builds final 2-band gapfilled GeoTIFFs for each day.    
+-[`src/data_production/build_hsa500m_gapfilled.py`](src/data_production/build_hsa500m_gapfilled.py): Builds final 2-band gapfilled GeoTIFFs for each day.    
 
 **Input**:
 - Daily CARRA GeoTIFFs (base grid reference)
