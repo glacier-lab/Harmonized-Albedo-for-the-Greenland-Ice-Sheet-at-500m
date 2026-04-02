@@ -1,14 +1,23 @@
+
+"""
+CARRA Calibration Coefficient Analysis
+
+This module computes linear regression coefficients to calibrate downscaled CARRA 
+(Copernicus Atmosphere and Climate Change Service Reanalysis for Aerosols) albedo 
+data against Harmonized Satellite Albedo (HSA500m) data at 500m resolution.
+
+The workflow:
+1. Loads training data and fits a linear regression model
+2. Evaluates the fit and generates calibration plots
+3. Applies calibration to testing data and validates results
+4. Produces comparison visualizations
+
+Key outputs:
+- Regression coefficients (slope, intercept, r-value, p-value)
+- Calibration plots for training and testing datasets
+"""
+
 #%%
-# import os
-
-# Give Vaex/NumPy backends permission to use all available cores unless the
-# user already pinned these variables in the shell.
-# _CPU_COUNT = str(os.cpu_count() or 1)
-# os.environ.setdefault("VAEX_NUM_THREADS", _CPU_COUNT)
-# os.environ.setdefault("OMP_NUM_THREADS", _CPU_COUNT)
-# os.environ.setdefault("MKL_NUM_THREADS", _CPU_COUNT)
-# os.environ.setdefault("OPENBLAS_NUM_THREADS", _CPU_COUNT)
-
 import vaex as vx
 import numpy as np
 import cmocean as cm
@@ -63,7 +72,7 @@ def linregress_vaex(df: Any, x: str, y: str, selection: Optional[str] = None) ->
     else:
         t_stat = rvalue * np.sqrt((n - 2.0) / (1.0 - rvalue**2))
         pvalue = float(2.0 * stats.t.sf(abs(t_stat), df=n - 2.0))
-
+    # r2 = df.ml.metrics.r2_score(df[y], df[x], selection=selection)
     return RegressionResult(
         slope=float(slope),
         intercept=float(intercept),
@@ -117,7 +126,7 @@ ax.axvline(CALIBRATION_CAP, color='gray', alpha=0.8)
 # add text annotation for the calibration cap
 ax.text(CALIBRATION_CAP + 0.02, 0.0, f"Calibration Cap: {CALIBRATION_CAP}", color='gray', alpha=0.8, rotation=90, va='bottom')
 ax.set_aspect('equal')
-ax.set(xlabel="Downscaled CARRA", ylabel="Harmonized Satellite Albedo 500m")
+ax.set(xlabel="Downscaled CARRA Albedo 500m", ylabel="Harmonized Satellite Albedo 500m")
 fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/carra_hsa_calibration_training.png", dpi=300)
 # close figure after saved
 # plt.close(fig)
@@ -151,7 +160,7 @@ df.viz.heatmap(
     colormap = cm.cm.haline
     )
 ax.set_aspect('equal')
-ax.set(xlabel="Downscaled CARRA", ylabel="Harmonized Satellite Albedo 500m")
+ax.set(xlabel="Downscaled CARRA Albedo 500m", ylabel="Harmonized Satellite Albedo 500m")
 fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/carra_hsa_calibration_testing.png", dpi=300)
 # close figure after saved
 # plt.close(fig)

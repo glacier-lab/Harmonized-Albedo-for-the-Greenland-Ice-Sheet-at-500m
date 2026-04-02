@@ -277,7 +277,6 @@ sensors_expanded = {}
 # Add base sensors with no orbital drift split
 sensors_expanded['sice'] = {'data': df_sice, 'year_filter': None}
 sensors_expanded['gcomc'] = {'data': df_gcomc, 'year_filter': None}
-sensors_expanded['mcd43a3_bluesky'] = {'data': df_mcd43a3, 'year_filter': None}
 sensors_expanded['viirs_vj143ma3_bluesky'] = {'data': df_vj143ma3, 'year_filter': None}
 sensors_expanded['viirs_vnp43ma3_bluesky'] = {'data': df_vnp43ma3, 'year_filter': None}
 
@@ -300,6 +299,20 @@ if len(myd10_pre_drift) > 0:
 for year in myd10_years:
     sensors_expanded[f'myd10_{year}'] = {
         'data': df_myd10[df_myd10['time'].dt.year == year],
+        'year_filter': year
+    }
+
+# Add MCD43A3 scenarios - pre-drift (before 2020) and yearly drift scenarios (2020 onwards)
+# MCD43A3 combines Terra and Aqua, so it follows MOD10A1 drift timeline (drift starts 2020)
+mcd43a3_years = sorted([y for y in df_mcd43a3['time'].dt.year.unique() if y >= 2020])
+
+mcd43a3_pre_drift = df_mcd43a3[df_mcd43a3['time'].dt.year < 2020]
+if len(mcd43a3_pre_drift) > 0:
+    sensors_expanded['mcd43a3_bluesky'] = {'data': mcd43a3_pre_drift, 'year_filter': None}
+
+for year in mcd43a3_years:
+    sensors_expanded[f'mcd43a3_bluesky_{year}'] = {
+        'data': df_mcd43a3[df_mcd43a3['time'].dt.year == year],
         'year_filter': year
     }
 

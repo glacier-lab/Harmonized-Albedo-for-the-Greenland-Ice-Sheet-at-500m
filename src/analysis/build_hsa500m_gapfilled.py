@@ -40,12 +40,12 @@ CALIBRATION_CSV = "/data_3/shunan_2/AU/hsa500m/calibration/calibration_coefficie
 
 OUTPUT_DIR = "/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff"
 OVERWRITE_EXISTING_FILES = True
-NUM_WORKERS = 8
+NUM_WORKERS = 10
 ASSUME_PREALIGNED_GRID = True
 
 # User-adjustable CARRA calibration coefficients for gap filling.
-CARRA_CALIB_SLOPE = 0.8673
-CARRA_CALIB_INTERCEPT = 0.0745
+CARRA_CALIB_SLOPE = 0.8588
+CARRA_CALIB_INTERCEPT = 0.0803
 CARRA_CAP = 0.83
 
 SENSOR_CONFIGS = {
@@ -73,8 +73,8 @@ SENSOR_CONFIGS = {
         "date_regex": r"MCD43A3_BlueskyAlbedo_(\d{8})_500m\.tif",
         "date_fmt": "%Y%m%d",
         "scenario_key": "mcd43a3_bluesky",
-        "dynamic_by_year": False,
-        "drift_start_year": None,
+        "dynamic_by_year": True,
+        "drift_start_year": 2020,
     },
     "VIIRS_VJ143MA3_BLUESKY": {
         "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VJ143MA3",

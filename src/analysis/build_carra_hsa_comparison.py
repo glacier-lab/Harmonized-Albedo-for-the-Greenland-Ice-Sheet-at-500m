@@ -68,8 +68,8 @@ SENSOR_CONFIGS = {
         "date_regex": r"MCD43A3_BlueskyAlbedo_(\d{8})_500m\.tif",
         "date_fmt": "%Y%m%d",
         "scenario_key": "mcd43a3_bluesky",
-        "dynamic_by_year": False,
-        "drift_start_year": None,
+        "dynamic_by_year": True,
+        "drift_start_year": 2020,
     },
     "VIIRS_VJ143MA3_BLUESKY": {
         "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VJ143MA3",
