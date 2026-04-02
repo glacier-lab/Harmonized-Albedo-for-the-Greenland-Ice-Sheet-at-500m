@@ -33,12 +33,12 @@ import numpy as np
 import pandas as pd
 import rasterio as rio
 from matplotlib import colors
-from matplotlib.patches import Patch
+from matplotlib.patches import Patch, Rectangle
 from rasterio.plot import show
 from tqdm import tqdm
 from matplotlib_scalebar.scalebar import ScaleBar
 import seaborn as sns
-sns.set_theme(font_scale=1.5)
+sns.set_theme(font_scale=1)
 
 
 # -----------------------------------------------------------------------------
@@ -50,6 +50,8 @@ CALIBRATION_CSV = "/data_3/shunan_2/AU/hsa500m/calibration/calibration_coefficie
 OUTPUT_BASE_DIR = "/data_3/shunan_2/AU/hsa500m/hsa500m_preview"
 OUTPUT_FIG_DIR = os.path.join(OUTPUT_BASE_DIR, "daily_maps")
 OUTPUT_CSV = os.path.join(OUTPUT_BASE_DIR, "daily_scenario_pixel_counts_simplified.csv")
+OUTPUT_LOOKUP_CSV = os.path.join(OUTPUT_BASE_DIR, "scenario_code_lookup.csv")
+OUTPUT_SCENARIO_COLOR_FIG = os.path.join(OUTPUT_BASE_DIR, "scenario_colors_by_id.png")
 
 DATE_REGEX = r"hsa500m_gapfilled_(\d{8})\.tif"
 
@@ -95,22 +97,24 @@ BLUE_FLUORITE = [
 _SCENARIO_ID_TO_LABEL: Optional[Dict[int, str]] = None
 _LABEL_TO_CODE: Optional[Dict[str, int]] = None
 _CODE_TO_LABEL: Optional[Dict[int, str]] = None
+_CODE_TO_COLOR: Optional[Dict[int, str]] = None
 
 
 def init_worker(calibration_csv: str) -> None:
-    global _SCENARIO_ID_TO_LABEL, _LABEL_TO_CODE, _CODE_TO_LABEL
+    global _SCENARIO_ID_TO_LABEL, _LABEL_TO_CODE, _CODE_TO_LABEL, _CODE_TO_COLOR
     matplotlib.use("Agg")
     sid_to_label = load_scenario_id_to_label(calibration_csv)
     lbl_to_code, code_to_lbl = build_sensor_combo_codes(sid_to_label)
     _SCENARIO_ID_TO_LABEL = sid_to_label
     _LABEL_TO_CODE = lbl_to_code
     _CODE_TO_LABEL = code_to_lbl
+    _CODE_TO_COLOR = build_code_color_map(code_to_lbl)
 
 
 def process_single_file(
     tif_path: str, output_fig_dir: str
 ) -> Tuple[bool, str, Optional[Dict]]:
-    if _SCENARIO_ID_TO_LABEL is None or _LABEL_TO_CODE is None or _CODE_TO_LABEL is None:
+    if _SCENARIO_ID_TO_LABEL is None or _LABEL_TO_CODE is None or _CODE_TO_LABEL is None or _CODE_TO_COLOR is None:
         return False, "Worker not initialized", None
 
     file_name = os.path.basename(tif_path)
@@ -136,8 +140,7 @@ def process_single_file(
     if valid_sensor_codes.size > 0:
         uniq, counts = np.unique(valid_sensor_codes, return_counts=True)
         for code, count in zip(uniq, counts):
-            group_name = _CODE_TO_LABEL.get(int(code), f"code_{int(code)}")
-            daily_row[group_name] = int(count)
+            daily_row[scenario_col_name(int(code))] = int(count)
 
     out_png = os.path.join(output_fig_dir, f"hsa500m_gapfilled_map_{date_compact}.png")
     plot_daily_maps(
@@ -147,6 +150,7 @@ def process_single_file(
         sensor_code_map=sensor_code_map,
         transform=transform,
         code_to_label=_CODE_TO_LABEL,
+        code_to_color=_CODE_TO_COLOR,
         out_png=out_png,
     )
     return True, date_str, daily_row
@@ -217,6 +221,91 @@ def build_sensor_combo_codes(scenario_id_to_label: Dict[int, str]) -> Tuple[Dict
     return label_to_code, code_to_label
 
 
+def scenario_col_name(code: int) -> str:
+    return f"scenario_{code}"
+
+
+def build_code_color_map(code_to_label: Dict[int, str]) -> Dict[int, str]:
+    color_map: Dict[int, str] = {
+        -1: "#5e3c99",  # carra_capflag
+        0: "#b2abd2",   # carra_calibrated
+    }
+    positive_codes = sorted([c for c in code_to_label.keys() if c > 0])
+    if positive_codes:
+        cmap = plt.get_cmap("nipy_spectral", len(positive_codes))
+        for i, code in enumerate(positive_codes):
+            color_map[code] = colors.to_hex(cmap(i))
+    return color_map
+
+
+def export_scenario_lookup(code_to_label: Dict[int, str]) -> None:
+    rows = []
+    for code in sorted(code_to_label.keys()):
+        rows.append(
+            {
+                "scenario_code": int(code),
+                "scenario_column": scenario_col_name(int(code)),
+                "sensors": code_to_label[code],
+            }
+        )
+
+    lookup_df = pd.DataFrame(rows)
+    lookup_df.to_csv(OUTPUT_LOOKUP_CSV, index=False)
+
+
+def export_scenario_color_figure(code_to_color: Dict[int, str]) -> None:
+    """Plot all scenario IDs with their assigned colors in a standalone 16x7 figure."""
+    ordered_codes = sorted(code_to_color.keys())
+
+    fig, ax = plt.subplots(figsize=(16, 7))
+    ax.set_axis_off()
+
+    n = len(ordered_codes)
+    n_cols = 10
+    n_rows = int(np.ceil(n / n_cols)) if n > 0 else 1
+
+    x_left = 0.03
+    x_right = 0.97
+    y_top = 0.92
+    y_bottom = 0.08
+
+    col_w = (x_right - x_left) / n_cols
+    row_h = (y_top - y_bottom) / n_rows
+
+    sw_w = col_w * 0.28
+    sw_h = row_h * 0.45
+
+    for i, code in enumerate(ordered_codes):
+        r = i // n_cols
+        c = i % n_cols
+
+        x = x_left + c * col_w
+        y = y_top - (r + 1) * row_h + (row_h - sw_h) * 0.5
+
+        rect = Rectangle(
+            (x, y), sw_w, sw_h,
+            facecolor=code_to_color[code],
+            edgecolor="black",
+            linewidth=0.4,
+            transform=ax.transAxes,
+            clip_on=False,
+        )
+        ax.add_patch(rect)
+        ax.text(
+            x + sw_w + col_w * 0.08,
+            y + sw_h * 0.5,
+            f"{int(code)}",
+            va="center",
+            ha="left",
+            # fontsize=10,
+            transform=ax.transAxes,
+        )
+
+    ax.set_title("Sensors")#, fontsize=14
+    fig.savefig(OUTPUT_SCENARIO_COLOR_FIG, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
 def scenario_to_sensor_code(
     scenario: np.ndarray,
     scenario_id_to_label: Dict[int, str],
@@ -240,24 +329,12 @@ def scenario_to_sensor_code(
     return code_map
 
 
-def make_sensor_cmap(codes_present: List[int]) -> Tuple[colors.ListedColormap, colors.BoundaryNorm, List[str], List[int]]:
-    # Deterministic colors for CARRA categories plus dynamic colors for sensor combos.
-    special_colors = {
-        -1: "#5e3c99",  # CARRA capflag
-        0: "#b2abd2",   # CARRA calibrated (<cap)
-    }
-
-    combo_codes = [c for c in codes_present if c > 0]
-    combo_palette = plt.get_cmap("tab20", max(len(combo_codes), 1))
-
+def make_sensor_cmap(
+    codes_present: List[int],
+    code_to_color: Dict[int, str],
+) -> Tuple[colors.ListedColormap, colors.BoundaryNorm, List[str], List[int]]:
     ordered_codes = sorted(codes_present)
-    color_list: List[str] = []
-    for c in ordered_codes:
-        if c in special_colors:
-            color_list.append(special_colors[c])
-        else:
-            idx = combo_codes.index(c) if c in combo_codes else 0
-            color_list.append(colors.to_hex(combo_palette(idx)))
+    color_list = [code_to_color.get(c, "#999999") for c in ordered_codes]
 
     cmap = colors.ListedColormap(color_list)
     boundaries = np.arange(len(ordered_codes) + 1) - 0.5
@@ -272,6 +349,7 @@ def plot_daily_maps(
     sensor_code_map: np.ndarray,
     transform,
     code_to_label: Dict[int, str],
+    code_to_color: Dict[int, str],
     out_png: str,
 ) -> None:
     albedo_cmap = colors.ListedColormap(BLUE_FLUORITE)
@@ -309,7 +387,7 @@ def plot_daily_maps(
         present = [0]
         sensor_code_map = np.where(np.isfinite(albedo), 0, np.nan).astype(np.float32)
 
-    sensor_cmap, sensor_norm, color_list, ordered_codes = make_sensor_cmap(present)
+    sensor_cmap, sensor_norm, color_list, ordered_codes = make_sensor_cmap(present, code_to_color)
 
     # Map integer codes to compact index for BoundaryNorm.
     idx_map = np.full(sensor_code_map.shape, np.nan, dtype=np.float32)
@@ -322,13 +400,6 @@ def plot_daily_maps(
     # axes[1].set_ylabel("Y")
     axes[1].set_axis_off()
 
-    legend_handles: List[Patch] = []
-    for color_hex, code in zip(color_list, ordered_codes):
-        label = code_to_label.get(code, f"code_{code}")
-        legend_handles.append(Patch(facecolor=color_hex, edgecolor="none", label=label))
-    axes[1].legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
-                   borderaxespad=0, frameon=True, title="Sensors")
-
     fig.savefig(out_png, dpi=220, bbox_inches="tight")
     plt.close(fig)
 
@@ -336,6 +407,12 @@ def plot_daily_maps(
 def main() -> None:
     os.makedirs(OUTPUT_BASE_DIR, exist_ok=True)
     os.makedirs(OUTPUT_FIG_DIR, exist_ok=True)
+
+    scenario_id_to_label = load_scenario_id_to_label(CALIBRATION_CSV)
+    _, code_to_label = build_sensor_combo_codes(scenario_id_to_label)
+    code_to_color = build_code_color_map(code_to_label)
+    export_scenario_lookup(code_to_label)
+    export_scenario_color_figure(code_to_color)
 
     all_files = sorted(glob.glob(os.path.join(HSA_GAPFILLED_DIR, "hsa500m_gapfilled_*.tif")))
     if len(all_files) == 0:
@@ -364,6 +441,8 @@ def main() -> None:
     print(f"Input files selected: {len(files)}")
     print(f"Figure output: {OUTPUT_FIG_DIR}")
     print(f"CSV output: {OUTPUT_CSV}")
+    print(f"Lookup CSV output: {OUTPUT_LOOKUP_CSV}")
+    print(f"Scenario color figure output: {OUTPUT_SCENARIO_COLOR_FIG}")
     print(f"Workers: {NUM_WORKERS}")
 
     stats_rows: List[Dict] = []
@@ -397,13 +476,9 @@ def main() -> None:
         if group_cols:
             stats_df[group_cols] = stats_df[group_cols].fillna(0).astype(np.int64)
 
-            # Keep CARRA groups first, then other groups alphabetically.
-            ordered_group_cols = []
-            for special in ["carra_capflag", "carra_calibrated"]:
-                if special in group_cols:
-                    ordered_group_cols.append(special)
-            ordered_group_cols.extend(sorted([c for c in group_cols if c not in ordered_group_cols]))
-            stats_df = stats_df[["date"] + ordered_group_cols]
+            scenario_cols = [c for c in group_cols if c.startswith("scenario_")]
+            scenario_cols = sorted(scenario_cols, key=lambda s: int(s.split("_", 1)[1]))
+            stats_df = stats_df[["date"] + scenario_cols]
 
     stats_df = stats_df.sort_values(["date"]).reset_index(drop=True)
     stats_df.to_csv(OUTPUT_CSV, index=False)
