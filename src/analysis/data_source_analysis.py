@@ -1,7 +1,7 @@
 '''
 This script analyzes the data source composition of the HSA500m dataset by comparing it to the CARRA and CARRA with 
 data cap. It calculates the fraction of each data source (CARRA data cap, CARRA, and HSA500m) for each day, 
-and then visualizes the results using a time series plot, a pie chart, and a seasonal bar plot. 
+and then visualizes the results using a time series plot, a pie chart, and a monthly bar plot. 
 The script also prints out statistics on the overall and seasonal data source fractions.
 
 Shunan Feng (shunan.feng@envs.au.dk)
@@ -88,46 +88,40 @@ ax_pie.set_position([-0.05, 0.01, 0.4, 0.4])
 ax_pie.legend(
 	plot_order,
 	loc="center right",
-	bbox_to_anchor=(2.6, 0.5),
+	bbox_to_anchor=(2.55, 0.4),
 	frameon=True,
 	title="Sources",
 )
 
-# plot data source by season using stacked bar plot
-df_plot_season = df[["date", "CARRA_data_cap", "CARRA", "HSA500m"]].copy()
-df_plot_season["month"] = df_plot_season["date"].dt.month
-# define seasons based on month: 12-2 is DJF, 3-5 is MAM, 7-9 is JJA, 10-12 is SON
-df_plot_season["season"] = df_plot_season["month"].apply(
-	lambda m: 1 if m in [12, 1, 2] else (2 if m in [3, 4, 5] else (3 if m in [6, 7, 8] else 4))
-)
-season_order = [1, 2, 3, 4]
-season_labels = ["DJF", "MAM", "JJA", "SON"]
-df_plot_season["season"] = pd.Categorical(df_plot_season["season"], categories=season_order, ordered=True)
-df_plot_season["season_label"] = df_plot_season["season"].cat.rename_categories(season_labels)
-df_season = df_plot_season.groupby("season_label", observed=False)[plot_order].sum().reset_index()
-# turn to fraction
-df_season[plot_order] = df_season[plot_order].div(df_season[plot_order].sum(axis=1), axis=0)
-# print seasonal stats
-print("\nSeasonal Data Source Fraction Statistics:")
-for season in season_labels:
-    season_data = df_season[df_season["season_label"] == season]
-    print(f"  {season}:")
-    for source in plot_order:
-        print(f"    {source}: {season_data[source].values[0]:.2%}")
-
-df_season.set_index("season_label")[plot_order].plot.bar(
+# plot data source by month using stacked area plot
+df_plot_month = df[["date", "CARRA_data_cap", "CARRA", "HSA500m"]].copy()
+df_plot_month["month"] = df_plot_month["date"].dt.month
+df_month = df_plot_month.groupby("month", observed=False)[plot_order].sum().reset_index()
+# turn to fraction	
+df_month[plot_order] = df_month[plot_order].div(df_month[plot_order].sum(axis=1), axis=0)
+# print monthly stats
+print("\nMonthly Data Source Fraction Statistics:")
+for month in range(1, 13):
+	month_data = df_month[df_month["month"] == month]
+	print(f"  Month {month}:")
+	for source in plot_order:
+		print(f"    {source}: {month_data[source].values[0]:.2%}")
+df_month.set_index("month")[plot_order].plot.area(
 	stacked=True,
 	ax=ax_bar,
 	color=[colors[c] for c in plot_order],
 )
 if ax_bar.get_legend() is not None:
 	ax_bar.get_legend().remove()
-# ax_bar.set_title("c) Seasonal Data Source Fraction")
-ax_bar.set_xlabel("")
+# ax_bar.set_title("c) Monthly Data Source Fraction")
+# ax_bar.set_xlabel("Month")
 ax_bar.set_ylabel("Percentage")
+ax_bar.set_xticks(range(1, 13))
+ax_bar.set_xticklabels(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
 ax_bar.set_ylim(0, 1)
+ax_bar.set_xlim(1, 12)
 ax_bar.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
-ax_bar.tick_params(axis="x", rotation=0)
+
 
 # add text labels to the topleft of each subplot
 ax_ts.text(-0.04, 1.03, "a)", transform=ax_ts.transAxes, va="top", ha="right")
@@ -138,3 +132,38 @@ ax_bar.text(-0.13, 1.05, "c)", transform=ax_bar.transAxes, va="top", ha="right")
 fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/data_source.pdf", bbox_inches="tight", dpi=300)
 fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/data_source.png", bbox_inches="tight", dpi=300)
 # %%
+# # plot data source by season using stacked bar plot
+# df_plot_season = df[["date", "CARRA_data_cap", "CARRA", "HSA500m"]].copy()
+# df_plot_season["month"] = df_plot_season["date"].dt.month
+# # define seasons based on month: 12-2 is DJF, 3-5 is MAM, 7-9 is JJA, 10-12 is SON
+# df_plot_season["season"] = df_plot_season["month"].apply(
+# 	lambda m: 1 if m in [12, 1, 2] else (2 if m in [3, 4, 5] else (3 if m in [6, 7, 8] else 4))
+# )
+# season_order = [1, 2, 3, 4]
+# season_labels = ["DJF", "MAM", "JJA", "SON"]
+# df_plot_season["season"] = pd.Categorical(df_plot_season["season"], categories=season_order, ordered=True)
+# df_plot_season["season_label"] = df_plot_season["season"].cat.rename_categories(season_labels)
+# df_season = df_plot_season.groupby("season_label", observed=False)[plot_order].sum().reset_index()
+# # turn to fraction
+# df_season[plot_order] = df_season[plot_order].div(df_season[plot_order].sum(axis=1), axis=0)
+# # print seasonal stats
+# print("\nSeasonal Data Source Fraction Statistics:")
+# for season in season_labels:
+#     season_data = df_season[df_season["season_label"] == season]
+#     print(f"  {season}:")
+#     for source in plot_order:
+#         print(f"    {source}: {season_data[source].values[0]:.2%}")
+
+# df_season.set_index("season_label")[plot_order].plot.bar(
+# 	stacked=True,
+# 	ax=ax_bar,
+# 	color=[colors[c] for c in plot_order],
+# )
+# if ax_bar.get_legend() is not None:
+# 	ax_bar.get_legend().remove()
+# # ax_bar.set_title("c) Seasonal Data Source Fraction")
+# ax_bar.set_xlabel("")
+# ax_bar.set_ylabel("Percentage")
+# ax_bar.set_ylim(0, 1)
+# ax_bar.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
+# ax_bar.tick_params(axis="x", rotation=0)
