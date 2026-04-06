@@ -42,7 +42,7 @@ from tqdm import tqdm
 # ---------------------------------------------------------------------------
 
 # Select input data mode: "daily" or "monthly"
-DATA_MODE = "monthly"  # <-- change this to switch between modes
+DATA_MODE = "daily"  # <-- change this to switch between modes
 
 # --- Daily settings ---
 _DAILY = dict(
@@ -68,7 +68,7 @@ _CFG = {"daily": _DAILY, "monthly": _MONTHLY}[DATA_MODE]
 INPUT_DIR  = _CFG["input_dir"]
 INPUT_GLOB = _CFG["input_glob"]
 OUTPUT_DIR = _CFG["output_dir"]
-OUTPUT_TIF = _CFG["output_tif"]
+OUTPUT_TIF = _CFG["output_tif"].format(DATA_MODE=DATA_MODE)
 DATE_REGEX = _CFG["date_regex"]
 DATE_FMT   = _CFG["date_fmt"]
 
@@ -77,7 +77,7 @@ BAND_INDEX = 1
 
 # Optional: restrict analysis to specific calendar months (e.g. JJA = 6,7,8).
 # Set to None or empty tuple to use all months.
-FILTER_MONTHS: Optional[Tuple[int, ...]] = None  # e.g. (6, 7, 8) for JJA, or None for all months
+FILTER_MONTHS: Optional[Tuple[int, ...]] = (6, 7, 8)  # e.g. (6, 7, 8) for JJA, or None for all months
 FILTER_YEARS: Optional[Tuple[int, int]] = None  # e.g. (2000, 2020) to restrict to 2000-2020, or None for all years
 
 # Albedo validity range — values outside are treated as NaN.
