@@ -1,336 +1,351 @@
 """
-Detect per-pixel trends in the HSA500m gapfilled time series.
+Pixel-wise trend analysis for HSA500m GeoTIFFs (daily or monthly).
 
-Optimized for 20-year daily time series across Greenland Ice Sheet:
-- Linear trend: Native Xarray/Dask vectorized operations
-- Mann-Kendall: Numba-compiled @guvectorize
-- Memory Management: Dask Distributed Client + Optimized spatial chunks
+Switch between daily and monthly input by setting DATA_MODE below.
+
+Strategy
+--------
+- All GeoTIFFs are enumerated and sorted by date (filenames parsed).
+- The full raster is divided into spatial tiles processed in parallel via
+  ProcessPoolExecutor.
+- Each worker opens its own rasterio handles per file and reads only its
+  spatial tile, then computes statistics with scipy for every non-NaN pixel.
+- NaN pixels (masked non-ice areas) produce NaN in all output bands.
+
+Outputs (6-band GeoTIFF):
+    Band 1: linear_slope_per_year
+    Band 2: linear_intercept
+    Band 3: linear_pvalue
+    Band 4: mk_tau
+    Band 5: mk_pvalue
+    Band 6: sens_slope_per_year
+
+Shunan Feng (shunan.feng@envs.au.dk)
 """
-
+#%%
 import glob
 import os
 import re
+import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import List, Optional, Tuple
 
-import dask
 import numpy as np
 import pandas as pd
 import rasterio as rio
-import rioxarray  # noqa: F401 — registers the "rasterio" engine for xr.open_mfdataset
-import xarray as xr
-from dask.diagnostics.progress import ProgressBar
-from numba import guvectorize, float32, int64
+from rasterio.windows import Window
 from scipy import stats
+from tqdm import tqdm
+#%%
+# ---------------------------------------------------------------------------
+# Configuration — edit these before running
+# ---------------------------------------------------------------------------
 
+# Select input data mode: "daily" or "monthly"
+DATA_MODE = "monthly"  # <-- change this to switch between modes
 
-# -----------------------------------------------------------------------------
-# Configuration
-# -----------------------------------------------------------------------------
-INPUT_DIR = "/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff"
-INPUT_GLOB = "hsa500m_gapfilled_*.tif"
-OUTPUT_DIR = "/data_3/shunan_2/AU/hsa500m/trend"
-OUTPUT_TIF = "hsa500m_trend_ols_mk.tif"
+# --- Daily settings ---
+_DAILY = dict(
+    input_dir="/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff",
+    input_glob="hsa500m_gapfilled_*.tif",
+    output_dir="/data_3/shunan_2/AU/hsa500m/trend",
+    output_tif="hsa500m_trend_{DATA_MODE}.tif",
+    date_regex=r"hsa500m_gapfilled_(\d{8})\.tif",
+    date_fmt="%Y%m%d",
+)
 
+# --- Monthly settings ---
+_MONTHLY = dict(
+    input_dir="/data_3/shunan_2/AU/hsa500m/hsa500m_monthly",
+    input_glob="hsa500m_monthly_*.tif",
+    output_dir="/data_3/shunan_2/AU/hsa500m/trend",
+    output_tif="hsa500m_trend_{DATA_MODE}.tif",
+    date_regex=r"hsa500m_monthly_(\d{6})\.tif",
+    date_fmt="%Y%m",
+)
+
+_CFG = {"daily": _DAILY, "monthly": _MONTHLY}[DATA_MODE]
+INPUT_DIR  = _CFG["input_dir"]
+INPUT_GLOB = _CFG["input_glob"]
+OUTPUT_DIR = _CFG["output_dir"]
+OUTPUT_TIF = _CFG["output_tif"]
+DATE_REGEX = _CFG["date_regex"]
+DATE_FMT   = _CFG["date_fmt"]
+
+# Band to read from each input file (band 1 is HSA and band 2 is QA).
 BAND_INDEX = 1
-DATE_REGEX = r"hsa500m_gapfilled_(\d{8})\.tif"
-DATE_FMT = "%Y%m%d"
 
-MIN_VALID_OBS = 30
+# Optional: restrict analysis to specific calendar months (e.g. JJA = 6,7,8).
+# Set to None or empty tuple to use all months.
+FILTER_MONTHS: Optional[Tuple[int, ...]] = None  # e.g. (6, 7, 8) for JJA, or None for all months
+FILTER_YEARS: Optional[Tuple[int, int]] = None  # e.g. (2000, 2020) to restrict to 2000-2020, or None for all years
+
+# Albedo validity range — values outside are treated as NaN.
 ALBEDO_MIN = 0.0
 ALBEDO_MAX = 1.0
 
-# 256x256 * 7300 days * 4 bytes = ~1.9 GB per chunk. Safe for Dask workers.
-CHUNKS = {"x": 256, "y": 256}
+# Minimum number of valid (non-NaN) observations required to compute stats.
+MIN_VALID_OBS = 10
 
+# Parallelism: number of worker processes running simultaneously.
+N_WORKERS = 20
 
-def parse_date_from_name(file_name: str) -> Optional[pd.Timestamp]:
-    match = re.search(DATE_REGEX, file_name)
-    if not match:
-        return None
-    return pd.to_datetime(match.group(1), format=DATE_FMT)
+# Spatial tile size in pixels (rows × cols per tile).
+# Larger tiles = fewer tasks but more memory per worker.
+TILE_SIZE = 256
 
+BAND_NAMES = [
+    "linear_slope_per_year",
+    "linear_intercept",
+    "linear_pvalue",
+    "mk_tau",
+    "mk_pvalue",
+    "sens_slope_per_year",
+] # Must match the keys returned by _process_tile and the order of output bands in the GeoTIFF.
 
-def list_input_files(input_dir: str, pattern: str) -> List[str]:
-    files = sorted(glob.glob(os.path.join(input_dir, pattern)))
-    if not files:
-        raise FileNotFoundError(f"No input files found: {os.path.join(input_dir, pattern)}")
-    return files
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
 
-
-def decimal_year(times: pd.DatetimeIndex) -> np.ndarray:
-    year = times.year.to_numpy(dtype=np.float64)
-    day = times.dayofyear.to_numpy(dtype=np.float64)
+def decimal_year(ts: pd.DatetimeIndex) -> np.ndarray:
+    """Convert DatetimeIndex to decimal years (e.g. 2020.5)."""
+    year = ts.year.to_numpy(dtype=np.float64)
+    day = ts.dayofyear.to_numpy(dtype=np.float64)
     return year + (day - 1.0) / 365.25
 
 
-def load_hsa_timeseries(files: List[str]) -> xr.DataArray:
-    # Parse dates first; skip files with unrecognised names
-    valid_files: List[str] = []
-    timestamps: List[pd.Timestamp] = []
-    for fp in files:
-        ts = parse_date_from_name(os.path.basename(fp))
+def parse_date(filename: str) -> Optional[pd.Timestamp]:
+    m = re.search(DATE_REGEX, filename)
+    if not m:
+        return None
+    return pd.to_datetime(m.group(1), format=DATE_FMT)
+
+
+def collect_files(input_dir: str, pattern: str) -> Tuple[List[str], np.ndarray]:
+    """Return sorted file list and corresponding decimal-year array."""
+    all_files = sorted(glob.glob(os.path.join(input_dir, pattern)))
+    if not all_files:
+        raise FileNotFoundError(f"No files matching {os.path.join(input_dir, pattern)}")
+
+    files, timestamps = [], []
+    for fp in all_files:
+        ts = parse_date(os.path.basename(fp))
         if ts is not None:
-            valid_files.append(fp)
-            timestamps.append(ts.normalize())
+            files.append(fp)
+            timestamps.append(ts)
 
-    if not valid_files:
-        raise RuntimeError("No valid input files after date parsing")
+    if not files:
+        raise RuntimeError("No files matched the date regex.")
 
-    # open_mfdataset manages file handles via a pool so we never hit the
-    # OS limit of ~1024-4096 open files that a manual loop would exceed.
-    print(f"Loading {len(valid_files)} GeoTIFFs via open_mfdataset (file-handle-safe)...")
-    # Pass only the dimension name — xarray iterates over pd.Index as
-    # 9132 individual items, causing "concat_dims has length 9132" ValueError.
-    # Assign actual timestamps after loading instead.
-    ds = xr.open_mfdataset(
-        valid_files,
-        concat_dim="time",
-        combine="nested",
-        engine="rasterio",
-    )
-    ds = ds.assign_coords(time=pd.to_datetime(timestamps))
+    ts_index = pd.DatetimeIndex(timestamps)
 
-    # rioxarray's rasterio engine exposes raster data as `band_data`
-    da = ds["band_data"].sel(band=BAND_INDEX, drop=True)
+    # Optional month filter
+    if FILTER_MONTHS:
+        mask = ts_index.month.isin(FILTER_MONTHS)
+        files = [f for f, m in zip(files, mask) if m]
+        ts_index = ts_index[mask]
+    # Optional year filter
+    if FILTER_YEARS:
+        start_year, end_year = FILTER_YEARS
+        mask = (ts_index.year >= start_year) & (ts_index.year <= end_year)
+        files = [f for f, m in zip(files, mask) if m]
+        ts_index = ts_index[mask]
 
-    da = da.astype(np.float32)
-    da = da.where((da > ALBEDO_MIN) & (da < ALBEDO_MAX))
-    da = da.sortby("time")
-
-    print("Rechunking for time-series operations (time=-1)...")
-    return da.chunk({"time": -1, "x": CHUNKS["x"], "y": CHUNKS["y"]})
-
-
-def calculate_linear_trend_vectorized(y: xr.DataArray, min_n: int) -> Tuple[xr.DataArray, xr.DataArray]:
-    tvals = decimal_year(pd.DatetimeIndex(y.time.values))
-    t = xr.DataArray(tvals.astype(np.float32), dims=["time"], coords={"time": y.time})
-    
-    valid = y.notnull() & t.notnull()
-    n = valid.sum(dim="time")
-
-    y_valid = y.where(valid)
-    t_valid = t.where(valid)
-
-    t_mean = t_valid.mean(dim="time")
-    y_mean = y_valid.mean(dim="time")
-
-    t_centered = t_valid - t_mean
-    y_centered = y_valid - y_mean
-
-    ss_t = (t_centered ** 2).sum(dim="time")
-    ss_ty = (t_centered * y_centered).sum(dim="time")
-
-    slope = ss_ty / ss_t.where(ss_t > 0)
-    intercept = y_mean - slope * t_mean
-
-    y_hat = slope * t_valid + intercept
-    rss = ((y_valid - y_hat) ** 2).sum(dim="time")
-    
-    df = n - 2
-    se_slope = xr.ufuncs.sqrt((rss / df.clip(min=1)) / ss_t.where(ss_t > 0))
-    t_stat = slope / se_slope.where(se_slope > 0)
-
-    pvalue = 2.0 * (1.0 - xr.apply_ufunc(
-        lambda ts, d: stats.t.cdf(np.abs(ts), df=d),
-        t_stat, df,
-        dask="parallelized",
-        output_dtypes=[np.float32]
-    ))
-
-    slope = slope.where(n >= min_n).astype(np.float32)
-    pvalue = pvalue.where(n >= min_n).astype(np.float32)
-
-    return slope, pvalue
+    t_year = decimal_year(ts_index).astype(np.float64)
+    print(f"Files found  : {len(files)}")
+    print(f"Date range   : {ts_index[0].date()} → {ts_index[-1].date()}")
+    if FILTER_MONTHS:
+        print(f"Month filter : {FILTER_MONTHS}")
+    if FILTER_YEARS:
+        print(f"Year filter : {FILTER_YEARS}")
+    return files, t_year
 
 
-@guvectorize(
-    [(float32[:], int64, float32[:], float32[:], float32[:])],
-    "(n),()->(),(),()",
-    nopython=True,
-    cache=True
-)
-def mann_kendall_numba(y, min_n, tau, z, sens_slope):
-    valid_count = 0
-    for i in range(len(y)):
-        if np.isfinite(y[i]):
-            valid_count += 1
-
-    # FIX: Removed the [0] index. min_n is evaluated as a scalar here.
-    if valid_count < min_n:
-        tau[0] = np.nan
-        z[0] = np.nan
-        sens_slope[0] = np.nan
-        return
-
-    x = np.empty(valid_count, dtype=np.float32)
-    idx = 0
-    for i in range(len(y)):
-        if np.isfinite(y[i]):
-            x[idx] = y[i]
-            idx += 1
-
-    n = valid_count
-    s = 0.0
-    
-    for i in range(n - 1):
-        for j in range(i + 1, n):
-            diff = x[j] - x[i]
-            if diff > 0:
-                s += 1
-            elif diff < 0:
-                s -= 1
-
-    x_sorted = np.sort(x)
-    tie_term = 0.0
-    current_count = 1
-    for i in range(1, n):
-        if x_sorted[i] == x_sorted[i - 1]:
-            current_count += 1
-        else:
-            if current_count > 1:
-                tie_term += current_count * (current_count - 1) * (2 * current_count + 5)
-            current_count = 1
-    if current_count > 1:
-        tie_term += current_count * (current_count - 1) * (2 * current_count + 5)
-
-    var_s = (n * (n - 1) * (2 * n + 5) - tie_term) / 18.0
-
-    if var_s <= 0:
-        tau[0] = 0.0
-        z[0] = 0.0
-        sens_slope[0] = 0.0
-        return
-
-    if s > 0:
-        z[0] = (s - 1.0) / np.sqrt(var_s)
-    elif s < 0:
-        z[0] = (s + 1.0) / np.sqrt(var_s)
-    else:
-        z[0] = 0.0
-
-    tau[0] = s / (0.5 * n * (n - 1))
-
-    # Sen's slope: median of all pairwise slopes (x[j]-x[i])/(j-i)
-    n_pairs = n * (n - 1) // 2
-    pairwise = np.empty(n_pairs, dtype=np.float32)
-    k = 0
-    for i in range(n - 1):
-        for j in range(i + 1, n):
-            pairwise[k] = (x[j] - x[i]) / float(j - i)
-            k += 1
-    sens_slope[0] = np.median(pairwise)
-
-
-def run_trend_detection(hsa: xr.DataArray, min_valid_obs: int) -> xr.Dataset:
-    print("Computing linear trends (vectorized)...")
-    linear_slope, linear_pvalue = calculate_linear_trend_vectorized(hsa, min_valid_obs)
-
-    print("Computing Mann-Kendall trends + Sen's slope (Numba-compiled)...")
-    mk_tau, mk_z, mk_sens_slope = xr.apply_ufunc(
-        mann_kendall_numba,
-        hsa,
-        min_valid_obs,
-        input_core_dims=[["time"], []],
-        output_core_dims=[[], [], []],
-        dask="parallelized",
-        output_dtypes=[np.float32, np.float32, np.float32],
-    )
-
-    print("Computing Mann-Kendall p-values...")
-    mk_pvalue = 2.0 * (1.0 - xr.apply_ufunc(
-        lambda z_stat: stats.norm.cdf(np.abs(z_stat)),
-        mk_z,
-        dask="parallelized",
-        output_dtypes=[np.float32]
-    ))
-
-    ds = xr.Dataset(
-        {
-            "linear_slope_per_year": linear_slope,
-            "linear_pvalue": linear_pvalue,
-            "mk_tau": mk_tau,
-            "mk_z": mk_z,
-            "mk_pvalue": mk_pvalue,
-            "mk_sens_slope": mk_sens_slope,
+def raster_profile(filepath: str) -> dict:
+    with rio.open(filepath) as src:
+        return {
+            "width": src.width,
+            "height": src.height,
+            "crs": src.crs,
+            "transform": src.transform,
         }
-    )
-
-    ds["linear_slope_per_year"].attrs.update({
-        "long_name": "OLS slope per decimal year",
-        "units": "albedo_per_year"
-    })
-    ds["linear_pvalue"].attrs["long_name"] = "OLS two-tailed p-value"
-    ds["mk_tau"].attrs["long_name"] = "Mann-Kendall Kendall tau"
-    ds["mk_z"].attrs["long_name"] = "Mann-Kendall Z-score"
-    ds["mk_pvalue"].attrs["long_name"] = "Mann-Kendall two-tailed p-value"
-    ds["mk_sens_slope"].attrs.update({
-        "long_name": "Sen's slope (median pairwise slope per timestep)",
-        "units": "albedo_per_timestep",
-    })
-
-    return ds
 
 
-def write_multiband_trend_geotiff(ds: xr.Dataset, output_path: str, template_da: xr.DataArray) -> None:
-    band_names = [
-        "linear_slope_per_year",
-        "linear_pvalue",
-        "mk_tau",
-        "mk_z",
-        "mk_pvalue",
-        "mk_sens_slope",
-    ]
+def generate_tiles(height: int, width: int, tile_size: int):
+    """Yield (col_off, row_off, tile_w, tile_h) for all tiles."""
+    for row_off in range(0, height, tile_size):
+        tile_h = min(tile_size, height - row_off)
+        for col_off in range(0, width, tile_size):
+            tile_w = min(tile_size, width - col_off)
+            yield col_off, row_off, tile_w, tile_h
 
-    print("Stacking bands and preparing output...")
-    stacked = xr.concat([ds[name] for name in band_names], dim="band")
-    stacked = stacked.assign_coords(band=np.arange(1, len(band_names) + 1, dtype=np.int16))
 
-    if template_da.rio.crs is not None:
-        stacked = stacked.rio.write_crs(template_da.rio.crs, inplace=False)
+# ---------------------------------------------------------------------------
+# Worker function (must be module-level for pickling)
+# ---------------------------------------------------------------------------
 
-    print("Writing GeoTIFF...")
-    with ProgressBar():
-        stacked.rio.to_raster(
-            output_path,
-            dtype="float32",
-            compress="LZW",
-            predictor=3,
-            nodata=np.nan,
-            windowed=True, 
-        )
+def _process_tile(args):
+    """
+    Read one spatial tile across all time steps and compute per-pixel trends.
 
-    print("Adding band descriptions...")
-    with rio.open(output_path, "r+") as dst:
-        for i, name in enumerate(band_names, start=1):
-            dst.set_band_description(i, name)
+    Parameters
+    ----------
+    args : tuple
+        (files, t_year, col_off, row_off, tile_w, tile_h,
+         band_idx, albedo_min, albedo_max, min_valid_obs)
 
+    Returns
+    -------
+    col_off, row_off, result_dict
+        result_dict maps band name → 2-D float32 array (tile_h × tile_w).
+    """
+    (
+        files, t_year,
+        col_off, row_off, tile_w, tile_h,
+        band_idx, albedo_min, albedo_max, min_valid_obs,
+    ) = args
+
+    n_times = len(files)
+    win = Window(col_off, row_off, tile_w, tile_h)
+
+    # Read all time steps for this tile.
+    tile = np.empty((n_times, tile_h, tile_w), dtype=np.float32)
+    for i, fp in enumerate(files):
+        with rio.open(fp) as src:
+            data = src.read(band_idx, window=win, boundless=True, fill_value=np.nan)
+            tile[i] = data.astype(np.float32)
+
+    # Mask out-of-range values (nodata, fill values, etc.).
+    tile = np.where((tile > albedo_min) & (tile < albedo_max), tile, np.nan)
+
+    out_shape = (tile_h, tile_w)
+    lin_slope   = np.full(out_shape, np.nan, dtype=np.float32)
+    lin_intercept = np.full(out_shape, np.nan, dtype=np.float32)
+    lin_pvalue  = np.full(out_shape, np.nan, dtype=np.float32)
+    mk_tau      = np.full(out_shape, np.nan, dtype=np.float32)
+    mk_pvalue   = np.full(out_shape, np.nan, dtype=np.float32)
+    sens_slope  = np.full(out_shape, np.nan, dtype=np.float32)
+
+    for r in range(tile_h):
+        for c in range(tile_w):
+            pixel = tile[:, r, c]
+            valid = np.isfinite(pixel)
+            n_valid = int(valid.sum())
+
+            # Skip masked (non-ice) pixels — output stays NaN.
+            if n_valid < min_valid_obs:
+                continue
+
+            y = pixel[valid].astype(np.float64)
+            t = t_year[valid]
+
+            # --- Linear regression ---
+            lr = stats.linregress(t, y)
+            lin_slope[r, c]     = lr.slope
+            lin_intercept[r, c] = lr.intercept
+            lin_pvalue[r, c]    = lr.pvalue
+
+            # --- Mann-Kendall (Kendall tau between time and values) ---
+            tau, mk_p = stats.kendalltau(t, y)
+            mk_tau[r, c]    = tau
+            mk_pvalue[r, c] = mk_p
+
+            # --- Sen's slope (Theil-Sen estimator, slope in units/year) ---
+            theil = stats.theilslopes(y, t)
+            sens_slope[r, c] = theil.slope
+
+    return col_off, row_off, {
+        "linear_slope_per_year": lin_slope,
+        "linear_intercept":      lin_intercept,
+        "linear_pvalue":         lin_pvalue,
+        "mk_tau":                mk_tau,
+        "mk_pvalue":             mk_pvalue,
+        "sens_slope_per_year":   sens_slope,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main() -> None:
-    # Use threaded scheduler (in-process, no TCP).
-    # Avoids CommClosedError from inter-process data shuffles during rechunking.
-    # Numba guvectorize releases the GIL, so threads parallelize efficiently.
-    dask.config.set(scheduler='threads')
-
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_path = os.path.join(OUTPUT_DIR, OUTPUT_TIF)
 
-    print("=" * 70)
-    print("HSA500m Trend Detection: Linear + Mann-Kendall")
-    print("=" * 70)
-    
-    files = list_input_files(INPUT_DIR, INPUT_GLOB)
-    print(f"Input files: {len(files)}")
-    print(f"Initial spatial chunks: {CHUNKS}")
+    print("=" * 60)
+    print(f"HSA500m Trend Analysis — {DATA_MODE.upper()} (scipy, multiprocessing)")
+    print("=" * 60)
+    print(f"Input dir    : {INPUT_DIR}")
+    print(f"Output file  : {output_path}")
+    print(f"Workers      : {N_WORKERS}")
+    print(f"Tile size    : {TILE_SIZE}×{TILE_SIZE} pixels")
     print()
 
-    hsa = load_hsa_timeseries(files)
-    
-    ds_trend = run_trend_detection(hsa, min_valid_obs=MIN_VALID_OBS)
+    files, t_year = collect_files(INPUT_DIR, INPUT_GLOB)
 
-    output_path = os.path.join(OUTPUT_DIR, OUTPUT_TIF)
-    write_multiband_trend_geotiff(ds_trend, output_path, hsa)
+    profile = raster_profile(files[0])
+    height, width = profile["height"], profile["width"]
+    print(f"Raster size  : {width} × {height} pixels")
 
-    print("Done!")
+    # Build output arrays in memory (6 bands).
+    results_map = {name: np.full((height, width), np.nan, dtype=np.float32)
+                   for name in BAND_NAMES}
+
+    # Generate tile list.
+    tiles = list(generate_tiles(height, width, TILE_SIZE))
+    print(f"Total tiles  : {len(tiles)}")
+    print()
+
+    # Build argument list — only picklable scalars and lists.
+    task_args = [
+        (
+            files, t_year,
+            col_off, row_off, tile_w, tile_h,
+            BAND_INDEX, ALBEDO_MIN, ALBEDO_MAX, MIN_VALID_OBS,
+        )
+        for col_off, row_off, tile_w, tile_h in tiles
+    ]
+
+    with ProcessPoolExecutor(max_workers=N_WORKERS) as executor:
+        futures = {executor.submit(_process_tile, arg): arg for arg in task_args}
+        with tqdm(total=len(futures), unit="tile", desc="Processing") as pbar:
+            for future in as_completed(futures):
+                col_off, row_off, tile_results = future.result()
+                tile_h = tile_results["linear_slope_per_year"].shape[0]
+                tile_w = tile_results["linear_slope_per_year"].shape[1]
+                for name in BAND_NAMES:
+                    results_map[name][
+                        row_off : row_off + tile_h,
+                        col_off : col_off + tile_w,
+                    ] = tile_results[name]
+                pbar.update(1)
+
+    # Write multi-band GeoTIFF.
+    print(f"\nWriting output: {output_path}")
+    with rio.open(files[0]) as src:
+        out_profile = src.profile.copy()
+
+    out_profile.update(
+        count=len(BAND_NAMES),
+        dtype="float32",
+        nodata=np.nan,
+        compress="LZW",
+        predictor=3,
+        tiled=True,
+        blockxsize=256,
+        blockysize=256,
+        driver="GTiff",
+    )
+
+    with rio.open(output_path, "w", **out_profile) as dst:
+        for i, name in enumerate(BAND_NAMES, start=1):
+            dst.write(results_map[name], i)
+            dst.set_band_description(i, name)
+
+    print("Done.")
 
 
 if __name__ == "__main__":
     main()
+
+# %%
