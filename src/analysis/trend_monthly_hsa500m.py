@@ -1,10 +1,31 @@
 """
-Detect per-pixel trends in the HSA500m gapfilled time series.
+Detect per-pixel trends in monthly-aggregated HSA500m albedo.
 
-Optimized for 20-year daily time series across Greenland Ice Sheet:
-- Linear trend: Native Xarray/Dask vectorized operations
-- Mann-Kendall: Numba-compiled @guvectorize
-- Memory Management: Dask Distributed Client + Optimized spatial chunks
+WHY MONTHLY INSTEAD OF DAILY?
+-------------------------------
+Applying Mann-Kendall to raw daily data is statistically problematic because
+consecutive days are strongly autocorrelated. This inflates the MK S-statistic
+and produces over-confident p-values (false positives for significance). Monthly
+means substantially reduce this autocorrelation.
+
+Seasonal autocorrelation (every July > every August regardless of trend) still
+exists in an all-months series. The scientifically cleanest approach for
+Greenland albedo is to restrict to the MELT SEASON (June–August, JJA), which:
+  - Is when solar insolation drives ice melt and albedo is the key control
+  - Removes the seasonal cycle entirely, leaving only inter-annual variability
+  - Is standard in published Greenland albedo trend literature
+  - Gives ~75 time points (25 yr × 3 months) — sufficient for MK power
+
+Set MELT_SEASON_ONLY = True  → JJA monthly means  (25 yr × 3 mon = ~75 points)
+Set MELT_SEASON_ONLY = False → all monthly means   (25 yr × 12 mon = ~300 points)
+
+Outputs (6-band GeoTIFF):
+  Band 1: linear_slope_per_year  (albedo/year, OLS on decimal-year axis)
+  Band 2: linear_pvalue          (OLS two-tailed p-value)
+  Band 3: mk_tau                 (Mann-Kendall Kendall tau)
+  Band 4: mk_z                   (Mann-Kendall Z-score)
+  Band 5: mk_pvalue              (Mann-Kendall two-tailed p-value)
+  Band 6: mk_sens_slope          (Sen's slope, albedo/month-step)
 """
 
 import glob
@@ -28,20 +49,28 @@ from scipy import stats
 # -----------------------------------------------------------------------------
 INPUT_DIR = "/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff"
 INPUT_GLOB = "hsa500m_gapfilled_*.tif"
-OUTPUT_DIR = "/data_3/shunan_2/AU/hsa500m/trend"
-OUTPUT_TIF = "hsa500m_trend_ols_mk.tif"
+OUTPUT_DIR = "/data_3/shunan_2/AU/hsa500m/trend_monthly"
+
+# True  → JJA (June-Aug) monthly means only; output: *_monthly_jja.tif
+# False → all calendar months;               output: *_monthly_all.tif
+MELT_SEASON_ONLY = True
+MELT_MONTHS = (6, 7, 8)  # June, July, August
 
 BAND_INDEX = 1
 DATE_REGEX = r"hsa500m_gapfilled_(\d{8})\.tif"
 DATE_FMT = "%Y%m%d"
 
-MIN_VALID_OBS = 30
+# With monthly data (~75–300 time steps) require at least 10 valid months.
+MIN_VALID_OBS = 10
 ALBEDO_MIN = 0.0
 ALBEDO_MAX = 1.0
 
-# 256x256 * 7300 days * 4 bytes = ~1.9 GB per chunk. Safe for Dask workers.
 CHUNKS = {"x": 256, "y": 256}
 
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
 
 def parse_date_from_name(file_name: str) -> Optional[pd.Timestamp]:
     match = re.search(DATE_REGEX, file_name)
@@ -63,8 +92,12 @@ def decimal_year(times: pd.DatetimeIndex) -> np.ndarray:
     return year + (day - 1.0) / 365.25
 
 
-def load_hsa_timeseries(files: List[str]) -> xr.DataArray:
-    # Parse dates first; skip files with unrecognised names
+# -----------------------------------------------------------------------------
+# Data loading
+# -----------------------------------------------------------------------------
+
+def load_daily_timeseries(files: List[str]) -> xr.DataArray:
+    """Load daily GeoTIFFs as a lazy Dask-backed DataArray."""
     valid_files: List[str] = []
     timestamps: List[pd.Timestamp] = []
     for fp in files:
@@ -76,9 +109,7 @@ def load_hsa_timeseries(files: List[str]) -> xr.DataArray:
     if not valid_files:
         raise RuntimeError("No valid input files after date parsing")
 
-    # open_mfdataset manages file handles via a pool so we never hit the
-    # OS limit of ~1024-4096 open files that a manual loop would exceed.
-    print(f"Loading {len(valid_files)} GeoTIFFs via open_mfdataset (file-handle-safe)...")
+    print(f"Loading {len(valid_files)} daily GeoTIFFs via open_mfdataset...")
     # Pass only the dimension name — xarray iterates over pd.Index as
     # 9132 individual items, causing "concat_dims has length 9132" ValueError.
     # Assign actual timestamps after loading instead.
@@ -90,21 +121,54 @@ def load_hsa_timeseries(files: List[str]) -> xr.DataArray:
     )
     ds = ds.assign_coords(time=pd.to_datetime(timestamps))
 
-    # rioxarray's rasterio engine exposes raster data as `band_data`
     da = ds["band_data"].sel(band=BAND_INDEX, drop=True)
-
     da = da.astype(np.float32)
     da = da.where((da > ALBEDO_MIN) & (da < ALBEDO_MAX))
     da = da.sortby("time")
+    # Rechunk after load to avoid misalignment with on-disk GeoTIFF tile boundaries
+    return da.chunk({"time": 1, "x": CHUNKS["x"], "y": CHUNKS["y"]})
+
+
+def build_monthly_timeseries(
+    daily: xr.DataArray,
+    melt_season_only: bool,
+    melt_months: tuple,
+) -> xr.DataArray:
+    """
+    Aggregate daily → monthly means, then optionally keep only melt-season months.
+
+    Monthly mean uses nanmean semantics: a month is NaN only if ALL its days
+    within that pixel are NaN (cloud/off-ice). Months with some valid days
+    produce a reduced-sample mean — acceptable for trend analysis.
+    """
+    print("Resampling daily → monthly means...")
+    # 'MS' = month-start frequency; mean ignores NaN via skipna=True (default)
+    monthly = daily.resample(time="MS").mean(skipna=True)
+
+    if melt_season_only:
+        monthly = monthly.sel(time=monthly.time.dt.month.isin(list(melt_months)))
+        label = f"melt season (months {melt_months})"
+    else:
+        label = "all calendar months"
+
+    n_steps = len(monthly.time)
+    print(f"Monthly time steps ({label}): {n_steps}")
 
     print("Rechunking for time-series operations (time=-1)...")
-    return da.chunk({"time": -1, "x": CHUNKS["x"], "y": CHUNKS["y"]})
+    return monthly.chunk({"time": -1, "x": CHUNKS["x"], "y": CHUNKS["y"]})
 
 
-def calculate_linear_trend_vectorized(y: xr.DataArray, min_n: int) -> Tuple[xr.DataArray, xr.DataArray]:
+# -----------------------------------------------------------------------------
+# Trend statistics
+# -----------------------------------------------------------------------------
+
+def calculate_linear_trend_vectorized(
+    y: xr.DataArray, min_n: int
+) -> Tuple[xr.DataArray, xr.DataArray]:
+    """OLS slope (albedo/year) and two-tailed p-value via vectorized Xarray math."""
     tvals = decimal_year(pd.DatetimeIndex(y.time.values))
     t = xr.DataArray(tvals.astype(np.float32), dims=["time"], coords={"time": y.time})
-    
+
     valid = y.notnull() & t.notnull()
     n = valid.sum(dim="time")
 
@@ -125,7 +189,7 @@ def calculate_linear_trend_vectorized(y: xr.DataArray, min_n: int) -> Tuple[xr.D
 
     y_hat = slope * t_valid + intercept
     rss = ((y_valid - y_hat) ** 2).sum(dim="time")
-    
+
     df = n - 2
     se_slope = xr.ufuncs.sqrt((rss / df.clip(min=1)) / ss_t.where(ss_t > 0))
     t_stat = slope / se_slope.where(se_slope > 0)
@@ -134,12 +198,11 @@ def calculate_linear_trend_vectorized(y: xr.DataArray, min_n: int) -> Tuple[xr.D
         lambda ts, d: stats.t.cdf(np.abs(ts), df=d),
         t_stat, df,
         dask="parallelized",
-        output_dtypes=[np.float32]
+        output_dtypes=[np.float32],
     ))
 
     slope = slope.where(n >= min_n).astype(np.float32)
     pvalue = pvalue.where(n >= min_n).astype(np.float32)
-
     return slope, pvalue
 
 
@@ -147,15 +210,15 @@ def calculate_linear_trend_vectorized(y: xr.DataArray, min_n: int) -> Tuple[xr.D
     [(float32[:], int64, float32[:], float32[:], float32[:])],
     "(n),()->(),(),()",
     nopython=True,
-    cache=True
+    cache=True,
 )
 def mann_kendall_numba(y, min_n, tau, z, sens_slope):
+    """Numba-compiled Mann-Kendall + Sen's slope for a single pixel time series."""
     valid_count = 0
     for i in range(len(y)):
         if np.isfinite(y[i]):
             valid_count += 1
 
-    # FIX: Removed the [0] index. min_n is evaluated as a scalar here.
     if valid_count < min_n:
         tau[0] = np.nan
         z[0] = np.nan
@@ -171,7 +234,6 @@ def mann_kendall_numba(y, min_n, tau, z, sens_slope):
 
     n = valid_count
     s = 0.0
-    
     for i in range(n - 1):
         for j in range(i + 1, n):
             diff = x[j] - x[i]
@@ -210,7 +272,7 @@ def mann_kendall_numba(y, min_n, tau, z, sens_slope):
 
     tau[0] = s / (0.5 * n * (n - 1))
 
-    # Sen's slope: median of all pairwise slopes (x[j]-x[i])/(j-i)
+    # Sen's slope: median of all pairwise slopes (x[j]-x[i]) / (j-i)
     n_pairs = n * (n - 1) // 2
     pairwise = np.empty(n_pairs, dtype=np.float32)
     k = 0
@@ -225,7 +287,7 @@ def run_trend_detection(hsa: xr.DataArray, min_valid_obs: int) -> xr.Dataset:
     print("Computing linear trends (vectorized)...")
     linear_slope, linear_pvalue = calculate_linear_trend_vectorized(hsa, min_valid_obs)
 
-    print("Computing Mann-Kendall trends + Sen's slope (Numba-compiled)...")
+    print("Computing Mann-Kendall + Sen's slope (Numba-compiled)...")
     mk_tau, mk_z, mk_sens_slope = xr.apply_ufunc(
         mann_kendall_numba,
         hsa,
@@ -241,37 +303,40 @@ def run_trend_detection(hsa: xr.DataArray, min_valid_obs: int) -> xr.Dataset:
         lambda z_stat: stats.norm.cdf(np.abs(z_stat)),
         mk_z,
         dask="parallelized",
-        output_dtypes=[np.float32]
+        output_dtypes=[np.float32],
     ))
 
-    ds = xr.Dataset(
-        {
-            "linear_slope_per_year": linear_slope,
-            "linear_pvalue": linear_pvalue,
-            "mk_tau": mk_tau,
-            "mk_z": mk_z,
-            "mk_pvalue": mk_pvalue,
-            "mk_sens_slope": mk_sens_slope,
-        }
-    )
+    ds = xr.Dataset({
+        "linear_slope_per_year": linear_slope,
+        "linear_pvalue": linear_pvalue,
+        "mk_tau": mk_tau,
+        "mk_z": mk_z,
+        "mk_pvalue": mk_pvalue,
+        "mk_sens_slope": mk_sens_slope,
+    })
 
     ds["linear_slope_per_year"].attrs.update({
         "long_name": "OLS slope per decimal year",
-        "units": "albedo_per_year"
+        "units": "albedo_per_year",
     })
     ds["linear_pvalue"].attrs["long_name"] = "OLS two-tailed p-value"
     ds["mk_tau"].attrs["long_name"] = "Mann-Kendall Kendall tau"
     ds["mk_z"].attrs["long_name"] = "Mann-Kendall Z-score"
     ds["mk_pvalue"].attrs["long_name"] = "Mann-Kendall two-tailed p-value"
     ds["mk_sens_slope"].attrs.update({
-        "long_name": "Sen's slope (median pairwise slope per timestep)",
-        "units": "albedo_per_timestep",
+        "long_name": "Sen's slope (median pairwise slope per monthly timestep)",
+        "units": "albedo_per_month",
     })
-
     return ds
 
 
-def write_multiband_trend_geotiff(ds: xr.Dataset, output_path: str, template_da: xr.DataArray) -> None:
+# -----------------------------------------------------------------------------
+# Output
+# -----------------------------------------------------------------------------
+
+def write_multiband_trend_geotiff(
+    ds: xr.Dataset, output_path: str, template_da: xr.DataArray
+) -> None:
     band_names = [
         "linear_slope_per_year",
         "linear_pvalue",
@@ -296,7 +361,7 @@ def write_multiband_trend_geotiff(ds: xr.Dataset, output_path: str, template_da:
             compress="LZW",
             predictor=3,
             nodata=np.nan,
-            windowed=True, 
+            windowed=True,
         )
 
     print("Adding band descriptions...")
@@ -305,31 +370,33 @@ def write_multiband_trend_geotiff(ds: xr.Dataset, output_path: str, template_da:
             dst.set_band_description(i, name)
 
 
-def main() -> None:
-    # Use threaded scheduler (in-process, no TCP).
-    # Avoids CommClosedError from inter-process data shuffles during rechunking.
-    # Numba guvectorize releases the GIL, so threads parallelize efficiently.
-    dask.config.set(scheduler='threads')
+# -----------------------------------------------------------------------------
+# Entry point
+# -----------------------------------------------------------------------------
 
+def main() -> None:
+    dask.config.set(scheduler="threads")
+
+    suffix = "monthly_jja" if MELT_SEASON_ONLY else "monthly_all"
+    output_tif = f"hsa500m_trend_ols_mk_{suffix}.tif"
+    output_path = os.path.join(OUTPUT_DIR, output_tif)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print("=" * 70)
-    print("HSA500m Trend Detection: Linear + Mann-Kendall")
+    mode = "JJA melt-season months" if MELT_SEASON_ONLY else "all calendar months"
+    print(f"HSA500m Monthly Trend Detection: Linear + Mann-Kendall ({mode})")
     print("=" * 70)
-    
+
     files = list_input_files(INPUT_DIR, INPUT_GLOB)
     print(f"Input files: {len(files)}")
-    print(f"Initial spatial chunks: {CHUNKS}")
-    print()
 
-    hsa = load_hsa_timeseries(files)
-    
-    ds_trend = run_trend_detection(hsa, min_valid_obs=MIN_VALID_OBS)
+    daily = load_daily_timeseries(files)
+    hsa_monthly = build_monthly_timeseries(daily, MELT_SEASON_ONLY, MELT_MONTHS)
 
-    output_path = os.path.join(OUTPUT_DIR, OUTPUT_TIF)
-    write_multiband_trend_geotiff(ds_trend, output_path, hsa)
+    ds_trend = run_trend_detection(hsa_monthly, min_valid_obs=MIN_VALID_OBS)
+    write_multiband_trend_geotiff(ds_trend, output_path, hsa_monthly)
 
-    print("Done!")
+    print(f"Done! Output: {output_path}")
 
 
 if __name__ == "__main__":
