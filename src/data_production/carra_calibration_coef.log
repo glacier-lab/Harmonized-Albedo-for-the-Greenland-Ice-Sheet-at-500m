@@ -1,6 +1,3 @@
-nohup: ignoring input
-/data/shunan/conda-envs/bigdata/lib/python3.10/site-packages/vaex/functions.py:96: RuntimeWarning: divide by zero encountered in log
-  result = function(*numpy_data, **kwargs)
 slope: 0.8588203642392351
 intercept: 0.08031773557453903
 r2: 0.6228308653810546

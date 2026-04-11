@@ -292,14 +292,16 @@ def main():
     
     # Create plots
     create_overall_regression_plot(df, sensor_name)
-    plt.savefig(f"albedo_evaluation_{sensor_name}.png", dpi=300, bbox_inches='tight')
-    plt.savefig(f"albedo_evaluation_{sensor_name}.pdf", dpi=300, bbox_inches='tight')
+    # plt.savefig(f"albedo_evaluation_{sensor_name}.png", dpi=300, bbox_inches='tight')
+    # plt.savefig(f"albedo_evaluation_{sensor_name}.pdf", dpi=300, bbox_inches='tight')
     # plt.show()
     
     create_station_subplots(df)
     # plt.show()
     
-    create_time_series_plots(df)
+    fig_timeseries = create_time_series_plots(df)
+    fig_timeseries.savefig(f"/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/albedo_timeseries_{sensor_name}.png", dpi=300, bbox_inches='tight')
+    fig_timeseries.savefig(f"/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/albedo_timeseries_{sensor_name}.pdf", dpi=300, bbox_inches='tight')
     # plt.show()
 
 if __name__ == '__main__':

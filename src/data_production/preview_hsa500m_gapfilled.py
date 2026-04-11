@@ -62,7 +62,7 @@ MAX_FILES = None   # e.g., 30
 NUM_WORKERS = 8
 
 
-# Custom color palette provided by user.
+# Custom color palette  ref: https://gist.github.com/jscarto/6cc7f547bb7d5d9acda51e5c15256b01
 BLUE_FLUORITE = [
     '#291b32', '#2a1b34', '#2b1b34', '#2d1c36', '#2f1c38', '#301c39', '#301d3a', '#321d3b', '#331d3d', '#351d3f',
     '#351e40', '#371e41', '#381e43', '#3a1e45', '#3b1f45', '#3c1f46', '#3e1f48', '#3f1f4a', '#401f4c', '#42204d',
@@ -364,7 +364,7 @@ def plot_daily_maps(
     axes[0].set_axis_off()
 
     # Scale bar: pixel size from the rasterio transform (projected metres).
-    pixel_size_m = abs(transform.a)  # transform.a is x pixel width in map units
+    # pixel_size_m = abs(transform.a)  # transform.a is x pixel width in map units
     scalebar = ScaleBar(
         dx=1.0,
         units="m",

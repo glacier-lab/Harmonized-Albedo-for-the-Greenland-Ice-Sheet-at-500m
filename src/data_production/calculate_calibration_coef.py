@@ -1,3 +1,15 @@
+'''
+This script calculates calibration coefficients to harmonize remote sensing albedo data with AWS albedo measurements. The workflow includes:
+1. Loading and preprocessing albedo data from various sources.
+2. Generating scenarios based on different combinations of remote sensing sensors, including handling MODIS orbital drift by creating year-specific scenarios.
+3. For each scenario, calculating average daily remote sensing albedo, merging with AWS data, and splitting into training and testing sets.
+4. Deriving calibration coefficients from training data, applying calibration to test data, and calculating evaluation metrics.
+5. Visualizing the results with hexbin plots showing the relationship between remote sensing and AWS albedo before and after calibration, including statistics in text boxes.
+6. Storing results in a DataFrame and saving to CSV, as well as saving figures for each scenario.
+The script is designed to be flexible, allowing for easy addition of new sensors or scenarios by modifying the `sensors_expanded` dictionary and ensuring that the data is properly preprocessed. The `is_valid_combination` function ensures that only valid combinations of sensors are processed, avoiding mixing of incompatible sensor variants.
+
+Shunan Feng (shunan.feng@envs.au.dk)
+'''
 #%% 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -20,7 +32,7 @@ vj143ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vj143ma3_
 vnp43ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vnp43ma3_bluesky.csv'
 gcomc_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_gcomc_sr_albedo.csv'
 sice_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_sice_rebuild.csv'
-PLOT_FIGURES = False
+PLOT_FIGURES = True # Set to False to skip plotting and only calculate metrics
 
 # Folder to save calibration figures
 calibration_output_folder = '/data_3/shunan_2/AU/hsa500m/calibration'

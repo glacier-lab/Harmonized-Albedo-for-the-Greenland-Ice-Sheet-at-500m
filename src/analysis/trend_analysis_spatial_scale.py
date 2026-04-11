@@ -26,7 +26,6 @@ Shunan Feng (shunan.feng@envs.au.dk)
 import glob
 import os
 import re
-import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import List, Optional, Tuple
 
@@ -77,7 +76,7 @@ BAND_INDEX = 1
 
 # Optional: restrict analysis to specific calendar months (e.g. JJA = 6,7,8).
 # Set to None or empty tuple to use all months.
-FILTER_MONTHS: Optional[Tuple[int, ...]] = (6, 7, 8)  # e.g. (6, 7, 8) for JJA, or None for all months
+FILTER_MONTHS: Optional[Tuple[int, ...]] = None  # e.g. (6, 7, 8) for JJA, or None for all months
 FILTER_YEARS: Optional[Tuple[int, int]] = None  # e.g. (2000, 2020) to restrict to 2000-2020, or None for all years
 
 # Albedo validity range — values outside are treated as NaN.
@@ -92,7 +91,7 @@ N_WORKERS = 20
 
 # Spatial tile size in pixels (rows × cols per tile).
 # Larger tiles = fewer tasks but more memory per worker.
-TILE_SIZE = 256
+TILE_SIZE = 256 # optimal size for this dataset: minimizes iowait while keeping memory usage reasonable.
 
 BAND_NAMES = [
     "linear_slope_per_year",

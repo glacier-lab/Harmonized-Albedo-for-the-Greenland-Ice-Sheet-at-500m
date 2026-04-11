@@ -42,7 +42,8 @@ SENSORS_TO_RUN = [
     # "VIIRS_VNP43MA3_BLUESKY",
     # "GCOMC_SR_ALBEDO",
     # "SICE_REBUILD",
-    "HSA500M_GAPFILLED",
+    # "HSA500M_GAPFILLED",
+    "CARRA",
 ]
 
 # Band mapping supports two modes:
@@ -110,6 +111,15 @@ SENSOR_CONFIGS = {
         "output_csv": "point2pix_sice_rebuild.csv",
         "bands": [
             {"column": "albedo_sice_rebuild", "index": 1},
+        ],
+    },
+    "CARRA": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/CARRA_GL500m_geotiff",
+        "glob": "CARRA_Albedo_*_500m.tif",
+        "date_regex": r"CARRA_Albedo_(\d{8})_500m\.tif",
+        "output_csv": "point2pix_carra.csv",
+        "bands": [
+            {"column": "albedo_carra", "index": 1},
         ],
     },
     "HSA500M_GAPFILLED": {
