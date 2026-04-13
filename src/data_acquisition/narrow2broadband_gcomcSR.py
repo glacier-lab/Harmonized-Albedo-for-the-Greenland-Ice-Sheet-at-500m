@@ -1,4 +1,26 @@
+"""Build and evaluate a narrow-to-broadband albedo model for GCOM-C SR data.
+
+This script pairs PROMICE AWS daily albedo observations with GCOM-C surface
+reflectance bands, filters physically invalid values, evaluates predictor-band
+availability after QA masking, and fits a multiple linear regression model to
+estimate broadband albedo.
+Note that only bands with native 250m resolution are included. 
+
+The workflow produces a single summary figure containing:
+1. The number of valid GCOM-C SR samples available for each candidate band.
+2. Training-set predicted versus observed AWS albedo.
+3. Testing-set predicted versus observed AWS albedo.
+
+Saved outputs:
+- gcomc_sr_n2b.png
+- gcomc_sr_n2b.pdf
+
+Shunan Feng (shunan.feng@envs.au.dk)
+"""
+
 #%%
+from typing import cast
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,11 +30,13 @@ from scipy import stats
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 
-def setup_plotting_style():
-    sns.set_theme(style="darkgrid", font_scale=1.5)
-
+#%%
 def calculate_metrics(y_true, y_pred):
-    slope, intercept, r_value, p_value, std_err = stats.linregress(y_pred, y_true)
+    slope, intercept, r_value, p_value, _ = cast(
+        tuple[float, float, float, float, float],
+        stats.linregress(y_pred, y_true),
+    )
+    r_squared = r_value ** 2
     rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
     mae = np.mean(np.abs(y_true - y_pred))
     bias = np.mean(y_true - y_pred)
@@ -20,7 +44,7 @@ def calculate_metrics(y_true, y_pred):
         "slope": slope,
         "intercept": intercept,
         "r_value": r_value,
-        "r_squared": r_value ** 2,
+        "r_squared": r_squared,
         "p_value": p_value,
         "rmse": rmse,
         "mae": mae,
@@ -39,27 +63,6 @@ def summarize_band_availability(df, feature_cols, target_col="albedo_aws"):
     summary["null_sr_fraction"] = summary["null_sr_count"] / len(df)
     summary["all_null"] = summary["valid_sr_count"] == 0
     return summary.sort_values(["valid_pair_count", "valid_sr_count", "band"], ascending=[True, True, True])
-
-
-def create_band_availability_plot(summary):
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6), sharey=False)
-
-    plot_summary = summary.sort_values("valid_sr_count", ascending=False)
-    sns.barplot(data=plot_summary, x="band", y="valid_sr_count", color="#4C72B0", ax=axes[0])
-    axes[0].set_title("Valid SR Samples by Band")
-    axes[0].set_xlabel("Band")
-    axes[0].set_ylabel("Count")
-    axes[0].tick_params(axis="x", rotation=45)
-
-    plot_summary = summary.sort_values("valid_pair_count", ascending=False)
-    sns.barplot(data=plot_summary, x="band", y="valid_pair_count", color="#DD8452", ax=axes[1])
-    axes[1].set_title("Valid Paired Samples with AWS Albedo")
-    axes[1].set_xlabel("Band")
-    axes[1].set_ylabel("Count")
-    axes[1].tick_params(axis="x", rotation=45)
-
-    fig.tight_layout()
-    return fig
 
 def load_pair_sr_aws(aws_path, sr_path, feature_cols=None):
     df_aws = pd.read_csv(aws_path)
@@ -129,88 +132,23 @@ def fit_mlr_and_validate(df, feature_cols, test_size=0.2, random_state=42):
     }
     return out
 
-def create_mlr_train_test_plot(result):
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-
-    # Train panel
-    ax = axes[0]
-    hb = ax.hexbin(
-        result["yhat_train"], result["y_train"],
-        gridsize=100, cmap=cmocean.cm.haline, bins="log"
-    )
-    sns.regplot(x=result["yhat_train"], y=result["y_train"], scatter=False, color="red", ax=ax)
-    ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.8)
-    ax.set_aspect("equal")
-    ax.set_xlim((0, 1))
-    ax.set_ylim((0, 1))
-    ax.set_xlabel("Predicted Albedo")
-    ax.set_ylabel("AWS Albedo")
-    ax.set_title("Training")
-    cb = plt.colorbar(hb, ax=ax)
-    cb.set_label(r"$\log_{10}(\mathrm{Count}+1)$")
-
-    m = result["train_metrics"]
-    txt = (
-        f'N = {m["n"]}\n'
-        f'$R^2$ = {m["r_squared"]:.4f}\n'
-        f'RMSE = {m["rmse"]:.4f}\n'
-        f'MAE = {m["mae"]:.4f}\n'
-        f'Bias = {m["bias"]:.4f}\n'
-        f'Slope = {m["slope"]:.4f}\n'
-        f'Intercept = {m["intercept"]:.4f}'
-    )
-    ax.text(
-        0.05, 0.95, txt, transform=ax.transAxes, verticalalignment="top",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5)
-    )
-
-    # Test panel
-    ax = axes[1]
-    hb = ax.hexbin(
-        result["yhat_test"], result["y_test"],
-        gridsize=100, cmap=cmocean.cm.haline, bins="log"
-    )
-    sns.regplot(x=result["yhat_test"], y=result["y_test"], scatter=False, color="red", ax=ax)
-    ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.8)
-    ax.set_aspect("equal")
-    ax.set_xlim((0, 1))
-    ax.set_ylim((0, 1))
-    ax.set_xlabel("Predicted Albedo")
-    ax.set_ylabel("AWS Albedo")
-    ax.set_title("Validation (Testing)")
-    cb = plt.colorbar(hb, ax=ax)
-    cb.set_label(r"$\log_{10}(\mathrm{Count}+1)$")
-
-    m = result["test_metrics"]
-    txt = (
-        f'N = {m["n"]}\n'
-        f'$R^2$ = {m["r_squared"]:.4f}\n'
-        f'RMSE = {m["rmse"]:.4f}\n'
-        f'MAE = {m["mae"]:.4f}\n'
-        f'Bias = {m["bias"]:.4f}\n'
-        f'Slope = {m["slope"]:.4f}\n'
-        f'Intercept = {m["intercept"]:.4f}'
-    )
-    ax.text(
-        0.05, 0.95, txt, transform=ax.transAxes, verticalalignment="top",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5)
-    )
-
-    fig.tight_layout()
-    return fig
-
 def main():
-    setup_plotting_style()
 
     aws_path = "/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv"
     sr_path = "/data_3/shunan_2/AU/hsa500m/GCOMC_SR/albedo_gcomc_sr.csv"
-
+    candidate_feature_cols = ['Rs_VN01', 'Rs_VN02', 'Rs_VN03', "Rs_VN04", 'Rs_VN05', "Rs_VN06",
+                              'Rs_VN07', 'Rs_VN08', 'Rs_VN09', 'Rs_VN10', 'Rs_VN11', 'Rs_SW03']
+    # evaluate band availability
+    df, candidate_feature_cols, all_availability_summary, df_merged = load_pair_sr_aws(
+        aws_path,
+        sr_path,
+        feature_cols=candidate_feature_cols,
+    )
+    # feature_cols = None
     # Choose predictors explicitly if you want:
     feature_cols = ['Rs_VN01', 'Rs_VN02', 'Rs_VN03', 'Rs_VN05', 'Rs_VN07', 
                     'Rs_VN08', 'Rs_VN09', 'Rs_VN10', 'Rs_VN11', 'Rs_SW03']
     # "Rs_VN04", ,"Rs_VN06" are not used due to very low availability after QA masking
-    # feature_cols = None
-
     df, feature_cols, availability_summary, df_merged = load_pair_sr_aws(
         aws_path,
         sr_path,
@@ -245,12 +183,91 @@ def main():
     print("\nTraining metrics:", result["train_metrics"])
     print("Testing metrics:", result["test_metrics"])
 
-    fig_counts = create_band_availability_plot(availability_summary)
-    # fig_counts.savefig("/data_3/shunan_2/AU/hsa500m/calibration/print/gcomc_sr_band_availability.png", dpi=300, bbox_inches="tight")
+    sns.set_theme(font_scale=1.5, style="darkgrid")
+    haline_cmap = getattr(cmocean.cm, "haline")
+    fig, axes = plt.subplots(
+        1,
+        3,
+        figsize=(20, 7),
+        gridspec_kw={"width_ratios": [1.2, 1.4, 1.4]},
+    )
 
-    fig = create_mlr_train_test_plot(result)
-    # fig.savefig("/data_3/shunan_2/AU/hsa500m/calibration/print/gcomc_sr_mlr_validation.png", dpi=300, bbox_inches="tight")
-    plt.show()
+    plot_summary = all_availability_summary.copy()
+    plot_summary["selection_status"] = np.where(
+        plot_summary["band"].isin(feature_cols),
+        "Selected Bands",
+        "Excluded Bands",
+    )
+    plot_summary = plot_summary.sort_values("valid_sr_count", ascending=False)
+
+    ax = axes[0]
+    sns.barplot(
+        data=plot_summary,
+        x="band",
+        y="valid_sr_count",
+        hue="selection_status",
+        dodge=False,
+        palette={# pikachu palette
+            "Selected Bands": "#41414a",
+            "Excluded Bands": "#f6bd20",
+        },
+        ax=ax,
+    )
+    ax.set_xlabel("GCOM-C Bands")
+    ax.set_ylabel("Valid Observation Count")
+    # ax.set_title("Band Availability")
+    ax.tick_params(axis="x", rotation=45)
+    # move legend to the top of subfigure and show in two columns
+    ax.legend(loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.15), title="")
+
+    for ax, yhat_key, y_key, metrics_key, title in [
+        (axes[1], "yhat_train", "y_train", "train_metrics", "Training"),
+        (axes[2], "yhat_test", "y_test", "test_metrics", "Validation (Testing)"),
+    ]:
+        hb = ax.hexbin(
+            result[yhat_key],
+            result[y_key],
+            gridsize=100,
+            cmap=haline_cmap,
+            bins="log",
+        )
+        sns.regplot(x=result[yhat_key], y=result[y_key], scatter=False, color="red", ax=ax)
+        ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.8)
+        ax.set_aspect("equal")
+        ax.set_xlim((0, 1))
+        ax.set_ylim((0, 1))
+        ax.set_xlabel("Predicted Albedo")
+        ax.set_ylabel("AWS Albedo")
+        ax.set_title(title)
+        cb = plt.colorbar(hb, ax=ax)
+        cb.set_label(r"$\log_{10}(\mathrm{Count}+1)$")
+
+        m = result[metrics_key]
+        txt = (
+            f'N = {m["n"]}\n'
+            f'$R^2$ = {m["r_squared"]:.4f}\n'
+            f'RMSE = {m["rmse"]:.4f}\n'
+            f'MAE = {m["mae"]:.4f}\n'
+            f'Bias = {m["bias"]:.4f}\n'
+            f'Slope = {m["slope"]:.4f}\n'
+            f'Intercept = {m["intercept"]:.4f}'
+        )
+        ax.text(
+            0.05,
+            0.95,
+            txt,
+            transform=ax.transAxes,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+        )
+    # add text annotation for subfigure label
+    axes[0].text(0.9, 0.15,"a)", transform=axes[0].transAxes)
+    axes[1].text(0.9, 0.15,"b)", transform=axes[1].transAxes)
+    axes[2].text(0.9, 0.15,"c)", transform=axes[2].transAxes)
+    fig.tight_layout()
+    fig.savefig("gcomc_sr_n2b.png", dpi=300, bbox_inches="tight")
+    fig.savefig("gcomc_sr_n2b.pdf", dpi=300, bbox_inches="tight")
+    # plt.show()
 
 if __name__ == "__main__":
     main()

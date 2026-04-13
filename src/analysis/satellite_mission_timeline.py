@@ -43,20 +43,26 @@ df.columns = ["Mission", "Start", "End", "Version"]
 df["Start"] = pd.to_datetime(df["Start"])
 df["End"] = pd.to_datetime(df["End"])
 
-# define color for sensors
-sensor_colors = {# charmeleon palette
-    "MODIS": "#005aff", 
-    "VIIRS": "#ffde29", 
-    "Sentinel": "#cdac7b", 
-    "GCOM": "#BC002D", # Japan flag red
-    "CARRA": "#ff524a", 
+# define color and marker for sensors
+sensor_colors = {
+    # Blastoise palette for MODIS, VIIRS
+    "MODIS Terra": ("#083962", "o"),
+    "MODIS Aqua": ("#2062ac", "o"),
+    "MODIS Terra/Aqua": ("#94ace6", "d"),
+    "VIIRS JPSS1": ("#5a3918", "d"),
+    "VIIRS NPP": ("#d5ac4a", "d"),
+    # Charmeleon palette for Sentinel 3, GCOM-C, CARRA
+    "Sentinel 3": ("#ff836a", "o"), 
+    "GCOM-C SGLI": ("#942010", "o"), 
+    "CARRA": ("#6a6a6a", "s"), 
 }
 #%%
 fig, ax = plt.subplots(figsize=(12, 3))
 # plot rows from top to bottom in the figure by the order in the dataframe
     
 for i, row in df.iterrows():
-    ax.plot([row["Start"], row["End"]], [i, i], marker="o", label=row["Mission"], color=sensor_colors.get(row["Mission"].split()[0], "#BC002D"))
+    color, marker = sensor_colors.get(row["Mission"], ("black", "."))
+    ax.plot([row["Start"], row["End"]], [i, i], marker=marker, label=row["Mission"], color=color)
 ax.set_yticks(range(len(df)))
 ax.set_yticklabels(df["Mission"])
 # Make the dataframe order map from top to bottom in the figure.
