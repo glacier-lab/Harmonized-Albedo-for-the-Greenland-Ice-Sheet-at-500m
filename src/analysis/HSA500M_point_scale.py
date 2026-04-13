@@ -63,7 +63,7 @@ for i, station in enumerate(stations):
     sns.scatterplot(data=dfvnp43ma3, x='time', y='albedo_viirs_vnp43ma3_bluesky',   label='VNP43MA3', color='#d5ac4a', marker='d', alpha=0.7, ax=ax)
     sns.scatterplot(data=dfgcomc,    x='time', y='albedo_gcomc_sr',                 label='GCOM-C',   color='#942010', alpha=0.7, ax=ax)
     sns.scatterplot(data=dfsice,     x='time', y='albedo_sice_rebuild',             label='SICE',     color='#ff836a', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfcarra,    x='time', y='albedo_carra',                    label='CARRA',    color='#c0c0c0', alpha=0.7, ax=ax)
+    sns.scatterplot(data=dfcarra,    x='time', y='albedo_carra',                    label='CARRA',    color='#c0c0c0', marker='s', alpha=0.7, ax=ax)
     sns.scatterplot(data=dfhsa500m,  x='time', y='albedo_hsa500m_gapfilled',        label='HSA500m',  color='#c52018', marker='X', alpha=1, ax=ax)
 
     # ax.text(0.01, 0.97, f"{subplot_labels[i]}) {station}", transform=ax.transAxes,
