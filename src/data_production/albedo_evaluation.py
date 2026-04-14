@@ -148,8 +148,8 @@ def create_overall_regression_plot(df, sensor_name):
     ax.set_xlim((0, 1))
     ax.set_ylim((0, 1))
     plt.ylabel('AWS Albedo')
-    plt.xlabel('Remote Sensing Albedo')
-    plt.title(sensor_name)
+    plt.xlabel(DEFAULT_SENSOR)
+    # plt.title(sensor_name)
     # plt.legend()
     
     # Add statistics text box
@@ -292,8 +292,8 @@ def main():
     
     # Create plots
     create_overall_regression_plot(df, sensor_name)
-    # plt.savefig(f"albedo_evaluation_{sensor_name}.png", dpi=300, bbox_inches='tight')
-    # plt.savefig(f"albedo_evaluation_{sensor_name}.pdf", dpi=300, bbox_inches='tight')
+    plt.savefig(f"albedo_evaluation_{sensor_name}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"albedo_evaluation_{sensor_name}.pdf", dpi=300, bbox_inches='tight')
     # plt.show()
     
     create_station_subplots(df)
