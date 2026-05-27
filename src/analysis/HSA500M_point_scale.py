@@ -33,6 +33,13 @@ def load_and_filter(path, station, date_start=date_start, date_end=date_end):
     df = df[df['aws'] == station].copy()
     df['time'] = pd.to_datetime(df['time'])
     df = df[(df['time'] >= date_start) & (df['time'] < date_end)]
+    # mask out albedo data as NaN when cloud cover is >0.3 if 'cc' column exists
+    # if 'cc' in df.columns:
+    #     df.loc[df['cc'] >0.3, 'albedo'] = np.nan
+    # insert row with NaN albedo for missing dates to ensure continuous time series
+    all_dates = pd.date_range(start=date_start, end=date_end, freq='D')
+    df = df.set_index('time').reindex(all_dates).reset_index().rename(columns={'index': 'time'})
+
     return df
 
 #%% plot 3-panel time series

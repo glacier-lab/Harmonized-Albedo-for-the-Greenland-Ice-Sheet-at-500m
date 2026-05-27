@@ -20,7 +20,7 @@ csv_files = {aws: os.path.join(folder_path, f"{aws}_day.csv") for aws in aws_lis
 #%%
 # create csv file for storing output, overwrite if exists
 with open(csv_path, 'w') as f:
-    f.write('time,albedo,lat,lon,alt,aws\n')
+    f.write('time,albedo,lat,lon,alt,cc,aws\n')
 # %%
 for i in range(len(aws_list)):
     aws = aws_list[i]
@@ -28,7 +28,7 @@ for i in range(len(aws_list)):
     print(f"Processing {i+1}/{len(aws_list)}: {aws}")
     df = pd.read_csv(file_path)
     # select relevant columns
-    df = df[['time', 'albedo', 'lat', 'lon', 'alt']]
+    df = df[['time', 'albedo', 'lat', 'lon', 'alt', 'cc']]
     # drop nan values if any, count and print how many rows are dropped
     n_before = len(df)
     df = df.dropna()
