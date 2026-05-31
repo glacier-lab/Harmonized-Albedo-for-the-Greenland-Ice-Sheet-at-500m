@@ -40,9 +40,12 @@ SENSORS_TO_RUN = [
     # "MCD43A3_BLUESKY",
     # "VIIRS_VJ143MA3_BLUESKY",
     # "VIIRS_VNP43MA3_BLUESKY",
+    # "VIIRS_SR_ALBEDO_VNP09GA",
+    # "VIIRS_SR_ALBEDO_VJ109GA",
+    # "VIIRS_SR_ALBEDO_VJ209GA",
     # "GCOMC_SR_ALBEDO",
     # "SICE_REBUILD",
-    # "HSA500M_GAPFILLED",
+    "HSA500M_GAPFILLED",
     "CARRA",
 ]
 
@@ -93,6 +96,33 @@ SENSOR_CONFIGS = {
         "output_csv": "point2pix_viirs_vnp43ma3_bluesky.csv",
         "bands": [
             {"column": "albedo_viirs_vnp43ma3_bluesky", "index": 1},
+        ],
+    },
+    "VIIRS_SR_ALBEDO_VNP09GA": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_albedo/VNP09GA",
+        "glob": "VIIRS_SRalbedo_VNP09GA_*_500m.tif",
+        "date_regex": r"VIIRS_SRalbedo_VNP09GA_(\d{8})_500m\.tif",
+        "output_csv": "point2pix_viirs_sr_albedo_vnp09ga.csv",
+        "bands": [
+            {"column": "albedo_viirs_sr_vnp09ga", "index": 1},
+        ],
+    },
+    "VIIRS_SR_ALBEDO_VJ109GA": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_albedo/VJ109GA",
+        "glob": "VIIRS_SRalbedo_VJ109GA_*_500m.tif",
+        "date_regex": r"VIIRS_SRalbedo_VJ109GA_(\d{8})_500m\.tif",
+        "output_csv": "point2pix_viirs_sr_albedo_vj109ga.csv",
+        "bands": [
+            {"column": "albedo_viirs_sr_vj109ga", "index": 1},
+        ],
+    },
+    "VIIRS_SR_ALBEDO_VJ209GA": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_albedo/VJ209GA",
+        "glob": "VIIRS_SRalbedo_VJ209GA_*_500m.tif",
+        "date_regex": r"VIIRS_SRalbedo_VJ209GA_(\d{8})_500m\.tif",
+        "output_csv": "point2pix_viirs_sr_albedo_vj209ga.csv",
+        "bands": [
+            {"column": "albedo_viirs_sr_vj209ga", "index": 1},
         ],
     },
     "GCOMC_SR_ALBEDO": {

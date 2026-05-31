@@ -42,6 +42,9 @@ SENSOR_TO_POINT2PIX = {
     'MCD43A3': 'point2pix_mcd43a3_bluesky.csv',
     'VJ143MA3': 'point2pix_viirs_vj143ma3_bluesky.csv',
     'VNP43MA3': 'point2pix_viirs_vnp43ma3_bluesky.csv',
+    'VIIRS_SR_VNP09GA': 'point2pix_viirs_sr_albedo_vnp09ga.csv',
+    'VIIRS_SR_VJ109GA': 'point2pix_viirs_sr_albedo_vj109ga.csv',
+    'VIIRS_SR_VJ209GA': 'point2pix_viirs_sr_albedo_vj209ga.csv',
     'GCOM-C': 'point2pix_gcomc_sr_albedo.csv',
     'SICE': 'point2pix_sice_rebuild.csv',
     'HSA500m': 'point2pix_hsa500m_gapfilled.csv'

@@ -17,21 +17,24 @@ sns.set_theme(font_scale=1.5, style="white")
 # -----------------------------------------------------------------------------
 # Configuration of harmonization map plotting
 # -----------------------------------------------------------------------------
-impath_hsa = "/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff/hsa500m_gapfilled_20210822.tif"
-impath_gcomc = "/data_3/shunan_2/AU/hsa500m/GCOMC_SR_albedo/GCOMC_SRalbedo_20210822_500m.tif"
-impath_mcd43a3 = "/data_3/shunan_2/AU/hsa500m/MCD43A3_061_bluesky/MCD43A3_BlueskyAlbedo_20210822_500m.tif"
-impath_mod10a1 = "/data_3/shunan_2/AU/hsa500m/MOD10A1_cropped/MOD10A1_2021-08-22.tif"
-impath_myd10a1 = "/data_3/shunan_2/AU/hsa500m/MYD10A1_cropped/MYD10A1_2021-08-22.tif"
-impath_sice = "/data_3/shunan_2/AU/hsa500m/SICE_rebuild/SICE_Albedo_20210822_500m.tif"
-impath_vj143ma3 = "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VJ143MA3/VJ143MA3_BlueskyAlbedo_20210822_500m.tif"
-impath_vnp43a3 = "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VNP43MA3/VNP43MA3_BlueskyAlbedo_20210822_500m.tif"
-impath_carra = "/data_3/shunan_2/AU/hsa500m/CARRA_GL500m_geotiff/CARRA_Albedo_20210822_500m.tif"
+impath_hsa = "/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff/hsa500m_gapfilled_20230822.tif"
+impath_gcomc = "/data_3/shunan_2/AU/hsa500m/GCOMC_SR_albedo/GCOMC_SRalbedo_20230822_500m.tif"
+impath_mcd43a3 = "/data_3/shunan_2/AU/hsa500m/MCD43A3_061_bluesky/MCD43A3_BlueskyAlbedo_20230822_500m.tif"
+impath_mod10a1 = "/data_3/shunan_2/AU/hsa500m/MOD10A1_cropped/MOD10A1_2023-08-22.tif"
+impath_myd10a1 = "/data_3/shunan_2/AU/hsa500m/MYD10A1_cropped/MYD10A1_2023-08-22.tif"
+impath_sice = "/data_3/shunan_2/AU/hsa500m/SICE_rebuild/SICE_Albedo_20230822_500m.tif"
+impath_vj143ma3 = "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VJ143MA3/VJ143MA3_BlueskyAlbedo_20230822_500m.tif"
+impath_vnp43a3 = "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VNP43MA3/VNP43MA3_BlueskyAlbedo_20230822_500m.tif"
+impath_carra = "/data_3/shunan_2/AU/hsa500m/CARRA_GL500m_geotiff/CARRA_Albedo_20230822_500m.tif"
+impath_vj109gaSR = "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_mosaics/VJ109GA/VIIRS_SR_VJ109GA_20230822_500m.tif"
+impath_vj209gaSR = "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_mosaics/VJ209GA/VIIRS_SR_VJ209GA_20230822_500m.tif"
+impath_vnp09gaSR = "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_mosaics/VNP09GA/VIIRS_SR_VNP09GA_20230822_500m.tif"
 
 # turn impath into a pd dataframe
 df_imfiles = pd.DataFrame({
-    "dataset": ["MOD10A1", "MYD10A1", "MCD43A3", "VJ143MA3", "VNP43A3", "SICE", "GCOM-C", "CARRA", "HSA500m"],
-    "impath": [impath_mod10a1, impath_myd10a1, impath_mcd43a3, impath_vj143ma3, impath_vnp43a3, impath_sice, impath_gcomc, impath_carra, impath_hsa],
-    "subplot_label": ["(a) MOD10A1", "(b) MYD10A1", "(c) MCD43A3", "(d) VJ143MA3", "(e) VNP43A3", "(f) SICE", "(g) GCOM-C", "(h) CARRA", "(i) HSA500m"]
+    "dataset": ["MOD10A1", "MYD10A1","VNP09GA_SR", "VJ109GA_SR", "VJ209GA_SR", "SICE", "GCOM-C", "MCD43A3", "VNP43A3", "VJ143MA3", "CARRA", "HSA500m"],
+    "impath": [impath_mod10a1, impath_myd10a1, impath_vnp09gaSR, impath_vj109gaSR, impath_vj209gaSR, impath_sice, impath_gcomc, impath_mcd43a3, impath_vnp43a3, impath_vj143ma3, impath_carra, impath_hsa],
+    "subplot_label": ["(a) MOD10A1", "(b) MYD10A1", "(c) VNP09GA_SR", "(d) VJ109GA_SR", "(e) VJ209GA_SR", "(f) SICE", "(g) GCOM-C", "(h) MCD43A3", "(i) VNP43A3", "(j) VJ143MA3", "(k) CARRA", "(l) HSA500m"]
 })
 
 # Custom color palette  ref: https://gist.github.com/jscarto/6cc7f547bb7d5d9acda51e5c15256b01
@@ -70,7 +73,7 @@ albedo_cmap = colors.ListedColormap(BLUE_FLUORITE)
 # Load data and plot
 # -----------------------------------------------------------------------------
 # create a 4x3 subplot to show all 9 datasets and the qa band of HSA500m
-fig, axes = plt.subplots(3, 4, figsize=(17, 16))
+fig, axes = plt.subplots(3, 5, figsize=(17, 16))
 axes = axes.flatten()
 fig.subplots_adjust(left=0.03, right=0.90, top=0.96, bottom=0.04, wspace=0.1, hspace=0.08)
 

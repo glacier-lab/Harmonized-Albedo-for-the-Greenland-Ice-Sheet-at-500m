@@ -17,8 +17,8 @@ from scipy import stats
 import seaborn as sns
 import numpy as np
 import cmocean 
-from itertools import combinations
 import os
+from itertools import combinations
 from sklearn.model_selection import train_test_split
 
 sns.set_theme(style="darkgrid", font_scale=1.5, font="Arial")
@@ -32,7 +32,10 @@ vj143ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vj143ma3_
 vnp43ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vnp43ma3_bluesky.csv'
 gcomc_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_gcomc_sr_albedo.csv'
 sice_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_sice_rebuild.csv'
-PLOT_FIGURES = True # Set to False to skip plotting and only calculate metrics
+viirs_sr_vnp09ga_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vnp09ga.csv'
+viirs_sr_vj109ga_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vj109ga.csv'
+viirs_sr_vj209ga_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vj209ga.csv'
+PLOT_FIGURES = False # Set to False to skip plotting and only calculate metrics
 
 # Folder to save calibration figures
 calibration_output_folder = '/data_3/shunan_2/AU/hsa500m/calibration'
@@ -71,6 +74,15 @@ def load_and_preprocess_data(albedo_path):
     
 def calculate_metrics(y_true, y_pred):
     """Calculate evaluation metrics."""
+    y_true = pd.to_numeric(pd.Series(y_true), errors='coerce').to_numpy(dtype=float)
+    y_pred = pd.to_numeric(pd.Series(y_pred), errors='coerce').to_numpy(dtype=float)
+    valid = np.isfinite(y_true) & np.isfinite(y_pred)
+    y_true = y_true[valid]
+    y_pred = y_pred[valid]
+
+    if len(y_true) < 2:
+        raise ValueError("Not enough valid points to compute metrics")
+
     slope, intercept, r_value, p_value, std_err = stats.linregress(y_pred, y_true)
     rmse = np.sqrt(np.mean((y_true - y_pred)**2))
     mae = np.mean(np.abs(y_true - y_pred))
@@ -184,78 +196,44 @@ def create_calibration_plot(scenario_id, scenario_name, df_train, df_test, slope
     
     return test_calib_metrics
 
-def is_valid_combination(sensors):
-    """
-    Check if a combination of sensors is valid.
-    Rules:
-    - Cannot mix base sensor (e.g., 'mod10') with its year-specific variants (e.g., 'mod10_2020')
-    - Cannot mix different year variants of the same sensor (e.g., 'mod10_2020' with 'mod10_2021')
-    - Cannot mix year-specific sensors from different years (e.g., 'mod10_2020' with 'myd10_2021')
-    - Cannot mix pre-drift mod10 with year-specific myd10 (e.g., 'mod10' with 'myd10_2021')
-    - Exception: pre-drift myd10 CAN be combined with mod10_2020 (since myd10 drift starts in 2021)
-    """
-    # Extract base sensor names and years
-    sensor_info = {}
-    years_in_combo = set()
-    has_mod10_predrift = False
-    has_myd10_predrift = False
-    has_mod10_year = False
-    has_myd10_year = False
-    mod10_year_value = None
-    myd10_year_value = None
-    
-    for sensor in sensors:
-        # Get the base name and year (if any)
-        if '_' in sensor and sensor.split('_')[-1].isdigit():
-            base = sensor.rsplit('_', 1)[0]
-            year = sensor.rsplit('_', 1)[1]
-            years_in_combo.add(year)
-            
-            # Track if we have year-specific MODIS sensors
-            if base == 'mod10':
-                has_mod10_year = True
-                mod10_year_value = int(year)
-            elif base == 'myd10':
-                has_myd10_year = True
-                myd10_year_value = int(year)
-        else:
-            base = sensor
-            year = None
-            
-            # Track if we have pre-drift MODIS sensors
-            if base == 'mod10':
-                has_mod10_predrift = True
-            elif base == 'myd10':
-                has_myd10_predrift = True
-        
-        if base not in sensor_info:
-            sensor_info[base] = []
-        sensor_info[base].append((sensor, year))
-    
-    # Check if any base sensor has multiple variants
-    for base, variants in sensor_info.items():
-        if len(variants) > 1:
-            return False
-    
-    # Check if there are multiple different years in the combination
-    if len(years_in_combo) > 1:
-        return False
-    
-    # Check for invalid MODIS combinations across sensors
-    # Cannot mix pre-drift mod10 with year-specific myd10 (any year >= 2021)
-    if has_mod10_predrift and has_myd10_year:
-        if myd10_year_value >= 2021:
-            return False
-    
-    # Exception: pre-drift myd10 (pre-2021) CAN be combined with mod10_2020
-    # This is valid, so no check needed for this case
-    
-    # Cannot mix pre-drift myd10 with year-specific mod10 >= 2021
-    if has_myd10_predrift and has_mod10_year:
-        if mod10_year_value >= 2021:
-            return False
-    
-    return True
+def build_combined_rs_dataset(sensor_sources):
+    """Build one RS albedo series by averaging all sensors in a scenario."""
+    frames = []
+    for sensor_name, df_sensor in sensor_sources.items():
+        if len(df_sensor) == 0:
+            continue
+        tmp = df_sensor[['time', 'aws', 'albedo_rs']].copy()
+        tmp['sensor'] = sensor_name
+        frames.append(tmp)
+
+    if len(frames) == 0:
+        return pd.DataFrame(columns=['time', 'aws', 'albedo_rs'])
+
+    df_all = pd.concat(frames, ignore_index=True)
+    df_avg = (
+        df_all
+        .groupby(['time', 'aws'], as_index=False)['albedo_rs']
+        .mean()
+    )
+    df_avg['albedo_rs'] = pd.to_numeric(df_avg['albedo_rs'], errors='coerce')
+    return df_avg
+
+
+def split_sensor_by_orbital_drift(df_sensor, base_name, drift_start_year):
+    """Split one sensor into pre-drift and per-year post-drift datasets."""
+    out = {}
+
+    df_pre = df_sensor[df_sensor['time'].dt.year < drift_start_year].copy()
+    if len(df_pre) > 0:
+        out[base_name] = df_pre
+
+    drift_years = sorted([y for y in df_sensor['time'].dt.year.unique() if y >= drift_start_year])
+    for year in drift_years:
+        df_year = df_sensor[df_sensor['time'].dt.year == year].copy()
+        if len(df_year) > 0:
+            out[f'{base_name}_{year}'] = df_year
+
+    return out
 
 #%% calibration coefficient calculation
 '''
@@ -277,189 +255,153 @@ df_vj143ma3 = load_and_preprocess_data(vj143ma3_path)
 df_vnp43ma3 = load_and_preprocess_data(vnp43ma3_path)
 df_sice = load_and_preprocess_data(sice_path)
 df_gcomc = load_and_preprocess_data(gcomc_path)
+df_viirs_sr_vnp09ga = load_and_preprocess_data(viirs_sr_vnp09ga_path)
+df_viirs_sr_vj109ga = load_and_preprocess_data(viirs_sr_vj109ga_path)
+df_viirs_sr_vj209ga = load_and_preprocess_data(viirs_sr_vj209ga_path)
 
-# Prepare sensor data with expanded MODIS scenarios for orbital drift
-# First, identify years for MODIS orbital drift scenarios
-mod10_years = sorted([y for y in df_mod10['time'].dt.year.unique() if y >= 2020])
-myd10_years = sorted([y for y in df_myd10['time'].dt.year.unique() if y >= 2021])
+# Restore orbital-drift handling for MODIS-family products.
+# MOD10A1 drift starts 2020, MYD10A1 drift starts 2021.
+mod10_split = split_sensor_by_orbital_drift(df_mod10, 'mod10', drift_start_year=2020)
+myd10_split = split_sensor_by_orbital_drift(df_myd10, 'myd10', drift_start_year=2021)
 
-# Create expanded sensor list with MODIS year-specific scenarios
-sensors_expanded = {}
+# MCD43A3 (Terra+Aqua blend) follows MOD10 drift timeline in this workflow.
+mcd43a3_split = split_sensor_by_orbital_drift(df_mcd43a3, 'mcd43a3_bluesky', drift_start_year=2020)
 
-# Add base sensors with no orbital drift split
-sensors_expanded['sice'] = {'data': df_sice, 'year_filter': None}
-sensors_expanded['gcomc'] = {'data': df_gcomc, 'year_filter': None}
-sensors_expanded['viirs_vj143ma3_bluesky'] = {'data': df_vj143ma3, 'year_filter': None}
-sensors_expanded['viirs_vnp43ma3_bluesky'] = {'data': df_vnp43ma3, 'year_filter': None}
+# Group sensors for scenario generation. Daily and 16-day products are calibrated
+# separately; they are not mixed within the same scenario.
+daily_sensor_groups = {
+    'mod10': mod10_split,
+    'myd10': myd10_split,
+    'sice': {'sice': df_sice},
+    'gcomc': {'gcomc': df_gcomc},
+    'viirs_sr_vnp09ga': {'viirs_sr_vnp09ga': df_viirs_sr_vnp09ga},
+    'viirs_sr_vj109ga': {'viirs_sr_vj109ga': df_viirs_sr_vj109ga},
+    'viirs_sr_vj209ga': {'viirs_sr_vj209ga': df_viirs_sr_vj209ga},
+}
 
-# Add MOD10 scenarios - pre-drift and yearly drift scenarios
-mod10_pre_drift = df_mod10[df_mod10['time'].dt.year < 2020]
-if len(mod10_pre_drift) > 0:
-    sensors_expanded['mod10'] = {'data': mod10_pre_drift, 'year_filter': None}
+fallback_sensor_groups = {
+    'mcd43a3_bluesky': mcd43a3_split,
+    'viirs_vj143ma3_bluesky': {'viirs_vj143ma3_bluesky': df_vj143ma3},
+    'viirs_vnp43ma3_bluesky': {'viirs_vnp43ma3_bluesky': df_vnp43ma3},
+}
 
-for year in mod10_years:
-    sensors_expanded[f'mod10_{year}'] = {
-        'data': df_mod10[df_mod10['time'].dt.year == year],
-        'year_filter': year
-    }
+daily_group_names = list(daily_sensor_groups.keys())
+fallback_group_names = list(fallback_sensor_groups.keys())
 
-# Add MYD10 scenarios - pre-drift and yearly drift scenarios  
-myd10_pre_drift = df_myd10[df_myd10['time'].dt.year < 2021]
-if len(myd10_pre_drift) > 0:
-    sensors_expanded['myd10'] = {'data': myd10_pre_drift, 'year_filter': None}
+scenario_specs = []
+for r_daily in range(1, len(daily_group_names) + 1):
+    for daily_combo in combinations(daily_group_names, r_daily):
+        scenario_specs.append({
+            'family': 'daily',
+            'group_names': list(daily_combo),
+        })
 
-for year in myd10_years:
-    sensors_expanded[f'myd10_{year}'] = {
-        'data': df_myd10[df_myd10['time'].dt.year == year],
-        'year_filter': year
-    }
+for r_fb in range(1, len(fallback_group_names) + 1):
+    for fallback_combo in combinations(fallback_group_names, r_fb):
+        scenario_specs.append({
+            'family': '16day',
+            'group_names': list(fallback_combo),
+        })
 
-# Add MCD43A3 scenarios - pre-drift (before 2020) and yearly drift scenarios (2020 onwards)
-# MCD43A3 combines Terra and Aqua, so it follows MOD10A1 drift timeline (drift starts 2020)
-mcd43a3_years = sorted([y for y in df_mcd43a3['time'].dt.year.unique() if y >= 2020])
-
-mcd43a3_pre_drift = df_mcd43a3[df_mcd43a3['time'].dt.year < 2020]
-if len(mcd43a3_pre_drift) > 0:
-    sensors_expanded['mcd43a3_bluesky'] = {'data': mcd43a3_pre_drift, 'year_filter': None}
-
-for year in mcd43a3_years:
-    sensors_expanded[f'mcd43a3_bluesky_{year}'] = {
-        'data': df_mcd43a3[df_mcd43a3['time'].dt.year == year],
-        'year_filter': year
-    }
-
-print(f"Expanded sensor list: {list(sensors_expanded.keys())}")
-
-# Generate all possible combinations (1 to n sensors)
-
-scenarios = []
-
-# Scenario 0 placeholder (empty), so CARRA can be added later if needed.
-scenarios.append([])
-
-# All combinations of configured sensors
-non_carra_sensors = [s for s in sensors_expanded.keys()]
-sensor_indicator_columns = sorted(non_carra_sensors)
-
-for r in range(1, len(non_carra_sensors) + 1):
-    for combo in combinations(non_carra_sensors, r):
-        # Check if this is a valid combination (no mixing of base and year-specific variants)
-        if is_valid_combination(combo):
-            scenarios.append(list(combo))
-
-print(f"Total number of valid scenarios: {len(scenarios)}")
+print(f"Total scenarios to process: {len(scenario_specs)}")
 print(f"Plot figures: {PLOT_FIGURES}")
 
 #%% move on to processing each scenario and calculating calibration coefficients
 # Initialize results storage with scenario IDs
 calibration_results = []
 
-# Process each scenario
-for scenario_id, scenario in enumerate(scenarios, start=0):
-    scenario_name = '_'.join(scenario)
-    print(f"\nProcessing scenario {scenario_id}/{len(scenarios)}: {scenario_name}")
-    
-    # Collect and combine remote sensing data for this scenario
-    combined_rs_data = []
-    
-    for sensor in scenario:
-        # Use expanded sensor data
-        df_sensor = sensors_expanded[sensor]['data'].copy()
-        
-        if len(df_sensor) > 0:
-            combined_rs_data.append(df_sensor[['time', 'aws', 'albedo_rs']])
-    
-    if len(combined_rs_data) == 0:
-        print(f"  No data available for this scenario")
-        continue
-    
-    # Concatenate all sensor data
-    df_rs_combined = pd.concat(combined_rs_data, ignore_index=True)
-    
-    # Calculate average daily remote sensing albedo
-    df_rs_avg = df_rs_combined.groupby(['time', 'aws']).agg({
-        'albedo_rs': 'mean'
-    }).reset_index()
-    
+for scenario_id, spec in enumerate(scenario_specs, start=1):
+    scenario_family = spec['family']
+    group_names = spec['group_names']
+    scenario_name = f"{scenario_family}[{'+'.join(group_names)}]"
+    print(f"\nProcessing scenario {scenario_id}/{len(scenario_specs)}: {scenario_name}")
+
+    sensor_sources = {}
+    if scenario_family == 'daily':
+        for group_name in group_names:
+            sensor_sources.update(daily_sensor_groups[group_name])
+    else:
+        for group_name in group_names:
+            sensor_sources.update(fallback_sensor_groups[group_name])
+
+    df_rs_combined = build_combined_rs_dataset(sensor_sources)
+
     # Merge with AWS data
     df_merged = pd.merge(
         df_aws[['time', 'aws', 'albedo_aws']],
-        df_rs_avg,
+        df_rs_combined,
         on=['time', 'aws'],
         how='inner'
     )
-    
+
     # Remove NaN values
     df_merged = df_merged.dropna(subset=['albedo_aws', 'albedo_rs'])
-    
-    if len(df_merged) < 10:  # Minimum sample size requirement
-        print(f"  Insufficient data points ({len(df_merged)}), skipping")
+
+    if len(df_merged) < 10:
+        print(f"  Insufficient data points after merge: {len(df_merged)}, skipping")
         continue
-    
+
     # Split into training and testing data (70-30 split)
     df_train, df_test = train_test_split(df_merged, test_size=0.3, random_state=42)
-    
+
     if len(df_train) < 5 or len(df_test) < 5:
-        print(f"  Insufficient training or test data after split, skipping")
+        print("  Insufficient training or test data after split, skipping")
         continue
-    
+
     # Calculate metrics on training data
     train_metrics = calculate_metrics(df_train['albedo_aws'], df_train['albedo_rs'])
-    
+
     # Derive calibration coefficients from training data
     slope = train_metrics['slope']
     intercept = train_metrics['intercept']
-    
-    try:
-        if PLOT_FIGURES:
-            # Create calibration plot
-            test_calib_metrics = create_calibration_plot(
-                scenario_id, scenario_name, df_train, df_test,
-                slope, intercept, train_metrics, train_metrics
-            )
-        else:
-            # Calculate calibrated test metrics without plotting.
-            df_test_calib = df_test.copy()
-            df_test_calib['albedo_rs_calibrated'] = slope * df_test['albedo_rs'] + intercept
-            df_test_calib['albedo_rs_calibrated'] = df_test_calib['albedo_rs_calibrated'].clip(0, 1)
-            test_calib_metrics = calculate_metrics(df_test['albedo_aws'], df_test_calib['albedo_rs_calibrated'])
-        
-        # Store results
-        result = {
-            'scenario_id': scenario_id,
-            'scenario': scenario_name,
-            'sensors': ', '.join(scenario),
-            'n_sensors': len(scenario),
-            'n_train': len(df_train),
-            'n_test': len(df_test),
-            'n_total': len(df_merged),
-            'train_r_squared': train_metrics['r_squared'],
-            'train_rmse': train_metrics['rmse'],
-            'train_mae': train_metrics['mae'],
-            'train_bias': train_metrics['bias'],
-            'test_calib_r_squared': test_calib_metrics['r_squared'],
-            'test_calib_rmse': test_calib_metrics['rmse'],
-            'test_calib_mae': test_calib_metrics['mae'],
-            'test_calib_bias': test_calib_metrics['bias'],
-            'train_slope': train_metrics['slope'],
-            'train_intercept': train_metrics['intercept'],
-            'test_calib_slope': test_calib_metrics['slope'],
-            'test_calib_intercept': test_calib_metrics['intercept'],
-            'slope': slope,
-            'intercept': intercept
-        }
 
-        for sensor_name in sensor_indicator_columns:
-            result[sensor_name] = int(sensor_name in scenario)
-        
-        calibration_results.append(result)
-        
-        print(f"  Training: N={len(df_train)}, R²={train_metrics['r_squared']:.3f}")
-        print(f"  Test (calibrated): N={len(df_test)}, R²={test_calib_metrics['r_squared']:.3f}")
-        
-    except Exception as e:
-        print(f"  Error processing scenario: {e}")
-        continue
+    if PLOT_FIGURES:
+        test_calib_metrics = create_calibration_plot(
+            scenario_id, scenario_name, df_train, df_test,
+            slope, intercept, train_metrics, train_metrics
+        )
+    else:
+        df_test_calib = df_test.copy()
+        df_test_calib['albedo_rs_calibrated'] = slope * df_test['albedo_rs'] + intercept
+        df_test_calib['albedo_rs_calibrated'] = df_test_calib['albedo_rs_calibrated'].clip(0, 1)
+        test_calib_metrics = calculate_metrics(df_test['albedo_aws'], df_test_calib['albedo_rs_calibrated'])
+
+    result = {
+        'scenario_id': scenario_id,
+        'scenario': scenario_name,
+        'workflow': 'daily_only_or_16day_only_combinations',
+        'scenario_family': scenario_family,
+        'daily_sensor_groups': ', '.join(group_names) if scenario_family == 'daily' else '',
+        'fallback_sensor_groups': ', '.join(group_names) if scenario_family == '16day' else '',
+        'daily_sensors': ', '.join(sensor_sources.keys()) if scenario_family == 'daily' else '',
+        'fallback_sensors': ', '.join(sensor_sources.keys()) if scenario_family == '16day' else '',
+        'n_train': len(df_train),
+        'n_test': len(df_test),
+        'n_total': len(df_merged),
+        'n_daily_used': len(df_merged) if scenario_family == 'daily' else 0,
+        'n_fallback_used': len(df_merged) if scenario_family == '16day' else 0,
+        'train_r_squared': train_metrics['r_squared'],
+        'train_rmse': train_metrics['rmse'],
+        'train_mae': train_metrics['mae'],
+        'train_bias': train_metrics['bias'],
+        'test_calib_r_squared': test_calib_metrics['r_squared'],
+        'test_calib_rmse': test_calib_metrics['rmse'],
+        'test_calib_mae': test_calib_metrics['mae'],
+        'test_calib_bias': test_calib_metrics['bias'],
+        'train_slope': train_metrics['slope'],
+        'train_intercept': train_metrics['intercept'],
+        'test_calib_slope': test_calib_metrics['slope'],
+        'test_calib_intercept': test_calib_metrics['intercept'],
+        'slope': slope,
+        'intercept': intercept,
+    }
+
+    calibration_results.append(result)
+
+    print(f"  Rows merged: {len(df_merged)}")
+    print(f"  Scenario family: {scenario_family}")
+    print(f"  Training: N={len(df_train)}, R²={train_metrics['r_squared']:.3f}")
+    print(f"  Test (calibrated): N={len(df_test)}, R²={test_calib_metrics['r_squared']:.3f}")
 
 # Convert results to DataFrame
 df_calibration = pd.DataFrame(calibration_results)

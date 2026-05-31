@@ -1,7 +1,7 @@
 '''
 This script analyzes the data source composition of the HSA500m dataset by comparing it to the CARRA and CARRA with 
-data cap. It calculates the fraction of each data source (CARRA data cap, CARRA, and HSA500m) for each day, 
-and then visualizes the results using a time series plot, a pie chart, and a monthly bar plot. 
+data cap. It calculates the fraction of each data source (CARRA data cap, CARRA, HSA_daily, and HSA_16day) for each
+day, and then visualizes the results using a time series plot, a pie chart, and a monthly bar plot. 
 The script also prints out statistics on the overall and seasonal data source fractions.
 
 Shunan Feng (shunan.feng@envs.au.dk)
@@ -17,27 +17,51 @@ sns.set_theme(font_scale=1.5, style="darkgrid")
 
 #%%
 df_file = "/data_3/shunan_2/AU/hsa500m/hsa500m_preview/daily_scenario_pixel_counts_simplified.csv"
-# lookup_file = "/data_3/shunan_2/AU/hsa500m/hsa500m_preview/scenario_code_lookup.csv"
+lookup_file = "/data_3/shunan_2/AU/hsa500m/hsa500m_preview/scenario_code_lookup.csv"
+calibration_file = "/data_3/shunan_2/AU/hsa500m/calibration/calibration_coefficients.csv"
+
 df = pd.read_csv(df_file)
-# df_lookup = pd.read_csv(lookup_file)
+
+# ── classify each scenario code as daily or 16-day ──────────────────────────
+# The lookup CSV maps code → simplified sensor label.
+# The calibration CSV carries scenario_family per scenario_id.
+# We replicate the same label-building logic used in preview_hsa500m_gapfilled.py
+# to associate each code with a family.
+
+FALLBACK_SENSOR_LABELS = {"mcd43a3", "vj143ma3", "vnp43ma3"}
+
+def _code_family(sensors_str: str) -> str:
+    """Return 'daily' if none of the 16-day sensor names appear, else '16day'."""
+    parts = {s.strip() for s in str(sensors_str).split("+") if s.strip()}
+    return "16day" if parts & FALLBACK_SENSOR_LABELS else "daily"
+
+lookup = pd.read_csv(lookup_file)
+lookup["family"] = lookup["sensors"].apply(_code_family)
+daily_codes = set(lookup.loc[lookup["family"] == "daily",  "scenario_code"].astype(int))
+fallback_codes = set(lookup.loc[lookup["family"] == "16day", "scenario_code"].astype(int))
+
 #%% total pixel analysis
-# rename column scenario-1 to CARRA_data_cap, and scenario-2 to CARRA
 df.rename(columns={"scenario_-1": "CARRA_data_cap", "scenario_0": "CARRA"}, inplace=True)
-# sum all remaining scenario columns to a new column called HSA500m
-scenario_cols = [col for col in df.columns if col.startswith("scenario_") and col not in ["CARRA_data_cap", "CARRA"]]
-df["HSA500m"] = df[scenario_cols].sum(axis=1)
-df["total"] = df["CARRA_data_cap"] + df["CARRA"] + df["HSA500m"]
-# calculate fraction of each source
+
+all_scenario_cols = [c for c in df.columns if c.startswith("scenario_") and c not in ("CARRA_data_cap", "CARRA")]
+
+daily_cols   = [c for c in all_scenario_cols if int(c.split("_", 1)[1]) in daily_codes]
+fallback_cols = [c for c in all_scenario_cols if int(c.split("_", 1)[1]) in fallback_codes]
+
+df["HSA_daily"]  = df[daily_cols].sum(axis=1)   if daily_cols   else 0
+df["HSA_16day"]  = df[fallback_cols].sum(axis=1) if fallback_cols else 0
+df["total"] = df["CARRA_data_cap"] + df["CARRA"] + df["HSA_daily"] + df["HSA_16day"]
 df["date"] = pd.to_datetime(df["date"])
 
 df_plot = df[["date"]].copy()
 df_plot["CARRA_data_cap"] = df["CARRA_data_cap"] / df["total"]
-df_plot["CARRA"] = df["CARRA"] / df["total"]
-df_plot["HSA500m"] = df["HSA500m"] / df["total"]
+df_plot["CARRA"]          = df["CARRA"]          / df["total"]
+df_plot["HSA_daily"]      = df["HSA_daily"]      / df["total"]
+df_plot["HSA_16day"]      = df["HSA_16day"]      / df["total"]
 
 # print simple stats of the data source counts
 print("Data Source Fraction Statistics:")
-for source in ["CARRA_data_cap", "CARRA", "HSA500m"]:
+for source in ["CARRA_data_cap", "CARRA", "HSA_daily", "HSA_16day"]:
     print(f"  {source}: {df[source].sum() / df['total'].sum():.2%}")
 # %% plot daily source fractions
 
@@ -48,13 +72,14 @@ ax_pie = fig.add_subplot(gs[1, 0])
 ax_bar = fig.add_subplot(gs[1, 1])
 
 colors = {
-	"HSA500m": "#107394",
+	"HSA_daily":     "#104a62",
+	"HSA_16day":     "#419cbd",
 	"CARRA_data_cap": "#ffe6a4",
-	"CARRA": "#d55273",
-}# Vaporeon
+	"CARRA":          "#d55273",
+}  # Vaporeon
 
 df_plot = df_plot.sort_values("date")
-plot_order = ["CARRA_data_cap", "CARRA", "HSA500m"]
+plot_order = ["CARRA_data_cap", "CARRA", "HSA_16day", "HSA_daily"]
 df_plot.set_index("date")[plot_order].plot.area(
 	stacked=True,
 	ax=ax_ts,
@@ -63,11 +88,12 @@ df_plot.set_index("date")[plot_order].plot.area(
 # handles, labels = ax_ts.get_legend_handles_labels()
 if ax_ts.get_legend() is not None:
 	ax_ts.get_legend().remove()
-ax_ts.set_ylabel("Data Source Fraction")
+ax_ts.set_ylabel("Percentage")
 # ax_ts.set_title("a) Daily Data Source Fractions Over Time")
 ax_ts.set_xlabel("")
 ax_ts.set_xlim(df_plot["date"].min(), df_plot["date"].max())
 ax_ts.set_ylim(0, 1)
+ax_ts.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
 
 pie_values = df[plot_order].sum()
@@ -84,17 +110,17 @@ ax_pie.pie(
 # ax_pie.set_title("b) Total Source Fraction")
 ax_pie.set_aspect("equal")
 # move pie chart slightly to the left
-ax_pie.set_position([-0.05, 0.01, 0.4, 0.4])
+ax_pie.set_position((-0.05, 0.01, 0.4, 0.4))
 ax_pie.legend(
 	plot_order,
 	loc="center right",
-	bbox_to_anchor=(2.55, 0.4),
+	bbox_to_anchor=(2.55, 0.35),
 	frameon=True,
 	title="Sources",
 )
 
 # plot data source by month using stacked area plot
-df_plot_month = df[["date", "CARRA_data_cap", "CARRA", "HSA500m"]].copy()
+df_plot_month = df[["date", "CARRA_data_cap", "CARRA", "HSA_daily", "HSA_16day"]].copy()
 df_plot_month["month"] = df_plot_month["date"].dt.month
 df_month = df_plot_month.groupby("month", observed=False)[plot_order].sum().reset_index()
 # turn to fraction	
@@ -114,7 +140,7 @@ df_month.set_index("month")[plot_order].plot.area(
 if ax_bar.get_legend() is not None:
 	ax_bar.get_legend().remove()
 # ax_bar.set_title("c) Monthly Data Source Fraction")
-# ax_bar.set_xlabel("Month")
+ax_bar.set_xlabel("")
 ax_bar.set_ylabel("Percentage")
 ax_bar.set_xticks(range(1, 13))
 ax_bar.set_xticklabels(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
@@ -124,7 +150,7 @@ ax_bar.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
 
 
 # add text labels to the topleft of each subplot
-ax_ts.text(-0.04, 1.03, "a)", transform=ax_ts.transAxes, va="top", ha="right")
+ax_ts.text(-0.07, 1.03, "a)", transform=ax_ts.transAxes, va="top", ha="right")
 ax_pie.text(-0.19, 0.9, "b)", transform=ax_pie.transAxes, va="top", ha="right")
 ax_bar.text(-0.13, 1.05, "c)", transform=ax_bar.transAxes, va="top", ha="right")
 

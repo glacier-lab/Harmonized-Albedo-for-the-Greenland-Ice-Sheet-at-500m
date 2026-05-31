@@ -96,7 +96,7 @@ def load_pair_sr_aws(aws_path, sr_path, feature_cols=None):
     df_filtered = df.dropna(subset=["albedo_aws"] + feature_cols).copy()
     return df_filtered, feature_cols, availability_summary, df
 
-def fit_mlr_and_validate(df, feature_cols, test_size=0.2, random_state=42):
+def fit_mlr_and_validate(df, feature_cols, test_size=0.3, random_state=42):
     X = df[feature_cols].values
     y = df["albedo_aws"].values
 
@@ -176,7 +176,7 @@ def main():
                    'CEN', 'CP1', 'DY2', 'EGP', 'HUM', 'KAN_U', 'NAE', 'NAU', 'NEM', 
                    'NSE', 'SDL', 'SDM', 'TUN']
     df = df[~df["aws"].isin(aws_exclude)].copy()
-    result = fit_mlr_and_validate(df, feature_cols, test_size=0.2, random_state=42)
+    result = fit_mlr_and_validate(df, feature_cols, test_size=0.3, random_state=42)
 
     print("\nMLR equation:")
     print(result["equation"])
@@ -261,9 +261,9 @@ def main():
             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
         )
     # add text annotation for subfigure label
-    axes[0].text(0.9, 0.15,"a)", transform=axes[0].transAxes)
-    axes[1].text(0.9, 0.15,"b)", transform=axes[1].transAxes)
-    axes[2].text(0.9, 0.15,"c)", transform=axes[2].transAxes)
+    # axes[0].text(0.9, 0.15,"a)", transform=axes[0].transAxes)
+    # axes[1].text(0.9, 0.15,"b)", transform=axes[1].transAxes)
+    # axes[2].text(0.9, 0.15,"c)", transform=axes[2].transAxes)
     fig.tight_layout()
     fig.savefig("gcomc_sr_n2b.png", dpi=300, bbox_inches="tight")
     fig.savefig("gcomc_sr_n2b.pdf", dpi=300, bbox_inches="tight")

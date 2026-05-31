@@ -1,5 +1,24 @@
 '''
+Generate point-scale albedo comparison plots for PROMICE stations.
 
+This script loads daily and 16-day satellite-derived albedo products,
+PROMICE AWS observations, CARRA, and gap-filled HSA500m estimates for the
+selected stations and time window. For each station, it builds a time-series
+panel, reports summary statistics comparing HSA500m against AWS, and exports
+the combined figure as both PNG and PDF.
+
+Inputs:
+- Station-wise point-to-pixel CSV files for each product listed below.
+- A date range defined by date_start and date_end.
+
+Outputs:
+- HSA500m_point_scale_time_series.png
+- HSA500m_point_scale_time_series.pdf
+
+The figure legend is organized into three groups: daily products, 16-day
+products, and AWS/CARRA/HSA500m reference datasets.
+
+Shunan Feng (shunan.feng@envs.au.dk)
 '''
 
 #%%
@@ -13,19 +32,27 @@ sns.set_theme(style='darkgrid', font_scale=1.5)
 
 #%%
 aws_path = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
+# daily albedo
 mod10_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_mod10a1.csv'
 myd10_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_myd10a1.csv'
+vnp09gaSR_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vnp09ga.csv'
+vj109gaSR_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vj109ga.csv'
+vj209gaSR_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vj209ga.csv'
+gcomc_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_gcomc_sr_albedo.csv'
+sice_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_sice_rebuild.csv'
+# 16 day albedo
 mcd43a3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_mcd43a3_bluesky.csv'
 vj143ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vj143ma3_bluesky.csv'
 vnp43ma3_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_vnp43ma3_bluesky.csv'
-gcomc_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_gcomc_sr_albedo.csv'
-sice_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_sice_rebuild.csv'
+# carra
 carra_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_carra.csv'
+# hsa500m gapfilled
 hsa500m_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_hsa500m_gapfilled.csv'
 
+
 stations = ['KAN_U', 'KAN_M', 'KAN_L']
-date_start = '2021-04-01'
-date_end = '2021-09-01'
+date_start = '2023-04-01'
+date_end = '2023-09-01'
 subplot_labels = ['a', 'b', 'c']
 
 def load_and_filter(path, station, date_start=date_start, date_end=date_end):
@@ -61,17 +88,27 @@ for i, station in enumerate(stations):
     dfsice    = load_and_filter(sice_path,    station)
     dfcarra   = load_and_filter(carra_path,   station)
     dfhsa500m = load_and_filter(hsa500m_path, station)
+    dfvj109gaSR= load_and_filter(vj109gaSR_path, station)
+    dfvj209gaSR= load_and_filter(vj209gaSR_path, station)
+    dfvnp09gaSR= load_and_filter(vnp09gaSR_path, station)
 
+    # plot albedo time series by sensor and types
     ax.plot(dfaws['time'], dfaws['albedo'], label='AWS', marker='.', linestyle='-', color='black', alpha=0.7)
-    sns.scatterplot(data=dfmod10,    x='time', y='albedo_mod10',                    label='MOD10A1',  color='#083962', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfmyd10,    x='time', y='albedo_myd10',                    label='MYD10A1',  color='#2062ac', alpha=0.7, ax=ax)
+    # daily
+    sns.scatterplot(data=dfmod10,    x='time', y='albedo_mod10',                  label='MOD10A1',    color='#083962', alpha=0.7, ax=ax, edgecolor='k')
+    sns.scatterplot(data=dfmyd10,    x='time', y='albedo_myd10',                  label='MYD10A1',    color='#2062ac', alpha=0.7, ax=ax, edgecolor='k')
+    sns.scatterplot(data=dfvj109gaSR, x='time', y='albedo_viirs_sr_vj109ga',      label='VJ109GA_SR', color='#d5ac4a', alpha=0.7, ax=ax, edgecolor='k')
+    sns.scatterplot(data=dfvnp09gaSR, x='time', y='albedo_viirs_sr_vnp09ga',      label='VNP09GA_SR', color='#5a3918', alpha=0.7, ax=ax, edgecolor='k')
+    sns.scatterplot(data=dfvj209gaSR, x='time', y='albedo_viirs_sr_vj209ga',      label='VJ209GA_SR', color='#cdcdd5', alpha=0.7, ax=ax, edgecolor='k')
+    sns.scatterplot(data=dfsice,     x='time', y='albedo_sice_rebuild',           label='SICE',       color='#ff836a', alpha=0.7, ax=ax, edgecolor='k')
+    sns.scatterplot(data=dfgcomc,    x='time', y='albedo_gcomc_sr',               label='GCOM-C',     color='#942010', alpha=0.7, ax=ax, edgecolor='k')
+    # 16-day
     sns.scatterplot(data=dfmcd43a3,  x='time', y='albedo_mcd43a3_bluesky',          label='MCD43A3',  color='#94ace6', marker='d', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfvj143ma3, x='time', y='albedo_viirs_vj143ma3_bluesky',   label='VJ143MA3', color='#5a3918', marker='d', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfvnp43ma3, x='time', y='albedo_viirs_vnp43ma3_bluesky',   label='VNP43MA3', color='#d5ac4a', marker='d', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfgcomc,    x='time', y='albedo_gcomc_sr',                 label='GCOM-C',   color='#942010', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfsice,     x='time', y='albedo_sice_rebuild',             label='SICE',     color='#ff836a', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfcarra,    x='time', y='albedo_carra',                    label='CARRA',    color='#c0c0c0', marker='s', alpha=0.7, ax=ax)
-    sns.scatterplot(data=dfhsa500m,  x='time', y='albedo_hsa500m_gapfilled',        label='HSA500m',  color='#c52018', marker='X', alpha=1, ax=ax)
+    sns.scatterplot(data=dfvj143ma3, x='time', y='albedo_viirs_vj143ma3_bluesky', label='VJ143MA3', color='#5a3918', marker='d', alpha=0.7, ax=ax)
+    sns.scatterplot(data=dfvnp43ma3, x='time', y='albedo_viirs_vnp43ma3_bluesky', label='VNP43MA3', color='#d5ac4a', marker='d', alpha=0.7, ax=ax)
+    # carra and hsa500m gapfilled
+    sns.scatterplot(data=dfcarra,    x='time', y='albedo_carra',                  label='CARRA',    color='#c0c0c0', marker='s', alpha=0.7, ax=ax)
+    sns.scatterplot(data=dfhsa500m,  x='time', y='albedo_hsa500m_gapfilled',      label='HSA500m',  color='#c52018', marker='X', alpha=1, ax=ax)
 
     # ax.text(0.01, 0.97, f"{subplot_labels[i]}) {station}", transform=ax.transAxes,
     #         ha='left', va='top', fontsize=14, fontweight='bold')
@@ -125,7 +162,7 @@ for i, station in enumerate(stations):
 
 # Single legend on top of the figure
 handles, labels = axes[0].get_legend_handles_labels()
-fig.legend(handles, labels, loc='upper center', ncol=5, bbox_to_anchor=(0.5, 0.96))
+fig.legend(handles, labels, loc='upper center', ncol=5, bbox_to_anchor=(0.5, 0.98))
 
 fig.savefig('HSA500m_point_scale_time_series.png', dpi=300, bbox_inches='tight')
 fig.savefig('HSA500m_point_scale_time_series.pdf', dpi=300, bbox_inches='tight')

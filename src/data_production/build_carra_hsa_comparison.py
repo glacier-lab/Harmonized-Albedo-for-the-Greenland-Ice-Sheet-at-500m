@@ -107,7 +107,50 @@ SENSOR_CONFIGS = {
         "dynamic_by_year": False,
         "drift_start_year": None,
     },
+    "VIIRS_SR_ALBEDO_VNP09GA": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_albedo/VNP09GA",
+        "glob": "VIIRS_SRalbedo_VNP09GA_*_500m.tif",
+        "date_regex": r"VIIRS_SRalbedo_VNP09GA_(\d{8})_500m\.tif",
+        "date_fmt": "%Y%m%d",
+        "scenario_key": "viirs_sr_vnp09ga",
+        "dynamic_by_year": False,
+        "drift_start_year": None,
+    },
+    "VIIRS_SR_ALBEDO_VJ109GA": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_albedo/VJ109GA",
+        "glob": "VIIRS_SRalbedo_VJ109GA_*_500m.tif",
+        "date_regex": r"VIIRS_SRalbedo_VJ109GA_(\d{8})_500m\.tif",
+        "date_fmt": "%Y%m%d",
+        "scenario_key": "viirs_sr_vj109ga",
+        "dynamic_by_year": False,
+        "drift_start_year": None,
+    },
+    "VIIRS_SR_ALBEDO_VJ209GA": {
+        "input_dir": "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_albedo/VJ209GA",
+        "glob": "VIIRS_SRalbedo_VJ209GA_*_500m.tif",
+        "date_regex": r"VIIRS_SRalbedo_VJ209GA_(\d{8})_500m\.tif",
+        "date_fmt": "%Y%m%d",
+        "scenario_key": "viirs_sr_vj209ga",
+        "dynamic_by_year": False,
+        "drift_start_year": None,
+    },
 }
+
+DAILY_SENSOR_NAMES = [
+    "MOD10A1",
+    "MYD10A1",
+    "GCOMC_SR_ALBEDO",
+    "SICE_REBUILD",
+    "VIIRS_SR_ALBEDO_VNP09GA",
+    "VIIRS_SR_ALBEDO_VJ109GA",
+    "VIIRS_SR_ALBEDO_VJ209GA",
+]
+
+FALLBACK_16DAY_SENSOR_NAMES = [
+    "MCD43A3_BLUESKY",
+    "VIIRS_VJ143MA3_BLUESKY",
+    "VIIRS_VNP43MA3_BLUESKY",
+]
 
 
 COEFF_DF = None
@@ -167,11 +210,19 @@ def load_calibration_table(path: str) -> Tuple[pd.DataFrame, list]:
     known_non_sensor_cols = {
         "scenario_id",
         "scenario",
+        "scenario_family",
+        "workflow",
         "sensors",
         "n_sensors",
+        "daily_sensor_groups",
+        "fallback_sensor_groups",
+        "daily_sensors",
+        "fallback_sensors",
         "n_train",
         "n_test",
         "n_total",
+        "n_daily_used",
+        "n_fallback_used",
         "train_r_squared",
         "train_rmse",
         "train_mae",
@@ -217,10 +268,52 @@ def build_scenario_indicator(date: pd.Timestamp, available_sensors: Set[str], sc
 
 
 def match_calibration_row(coeff_df: pd.DataFrame, scenario_cols: list, indicator: Dict[str, int]) -> Optional[pd.Series]:
-    if len(scenario_cols) == 0:
-        return None
+    return match_calibration_row_by_family(coeff_df, scenario_cols, indicator, scenario_family=None)
+
+
+def match_calibration_row_by_family(
+    coeff_df: pd.DataFrame,
+    scenario_cols: list,
+    indicator: Dict[str, int],
+    scenario_family: Optional[str],
+    active_sensor_keys: Optional[Set[str]] = None,
+) -> Optional[pd.Series]:
+    # Prefer string/group matching whenever active sensor keys are provided.
+    # This avoids mismatches when legacy one-hot columns are still present.
+    if active_sensor_keys is not None:
+        # New calibration schema stores active sensors as comma-separated strings.
+
+        matched = coeff_df.copy()
+        if scenario_family is not None and "scenario_family" in matched.columns:
+            matched = matched[matched["scenario_family"].astype(str) == scenario_family]
+
+        if matched.empty:
+            return None
+
+        sensor_col = "daily_sensor_groups" if scenario_family == "daily" else "fallback_sensor_groups"
+        if sensor_col not in matched.columns:
+            return None
+
+        def parse_sensor_set(v: object) -> Set[str]:
+            if v is None:
+                return set()
+            if isinstance(v, float) and np.isnan(v):
+                return set()
+            return {s.strip() for s in str(v).split(",") if s.strip()}
+
+        sets = matched[sensor_col].apply(parse_sensor_set)
+        exact = matched[sets == set(active_sensor_keys)]
+        if exact.empty:
+            return None
+
+        if "test_calib_r_squared" in exact.columns:
+            exact = exact.sort_values("test_calib_r_squared", ascending=False)
+        return exact.iloc[0]
 
     mask = np.ones(len(coeff_df), dtype=bool)
+    if scenario_family is not None and "scenario_family" in coeff_df.columns:
+        mask &= coeff_df["scenario_family"].astype(str).to_numpy() == scenario_family
+
     for col in scenario_cols:
         mask &= coeff_df[col].fillna(0).astype(int).to_numpy() == int(indicator.get(col, 0))
 
@@ -290,45 +383,116 @@ def process_single_carra_file(carra_fp: str, train_dir: str, test_dir: str):
         carra[carra == carra_nodata] = np.nan
     carra[(carra <= 0) | (carra >= 1)] = np.nan
 
-    sat_bands = []
-    available_sensors: Set[str] = set()
-
+    # Read all sensor bands first.
+    sat_by_sensor: Dict[str, np.ndarray] = {}
     for sensor_name in SENSOR_CONFIGS:
         sensor_fp = sensor_file_index[sensor_name].get(day)
         if sensor_fp is None:
-            sat_bands.append(np.full(base_shape, np.nan, dtype=np.float32))
+            sat_by_sensor[sensor_name] = np.full(base_shape, np.nan, dtype=np.float32)
             continue
 
         try:
             band = read_band_on_base_grid(sensor_fp, base_shape, base_transform, base_crs)
             band[(band <= 0) | (band >= 1)] = np.nan
-            sat_bands.append(band)
-            if np.isfinite(band).any():
-                available_sensors.add(sensor_name)
+            sat_by_sensor[sensor_name] = band
         except Exception:
-            sat_bands.append(np.full(base_shape, np.nan, dtype=np.float32))
+            sat_by_sensor[sensor_name] = np.full(base_shape, np.nan, dtype=np.float32)
 
-    sat_stack = np.stack(sat_bands, axis=0)
-    valid_counts = np.sum(np.isfinite(sat_stack), axis=0)
-    sat_sum = np.nansum(sat_stack, axis=0)
+    daily_bands = [sat_by_sensor[name] for name in DAILY_SENSOR_NAMES]
+    fallback_bands = [sat_by_sensor[name] for name in FALLBACK_16DAY_SENSOR_NAMES]
+
+    daily_stack = np.stack(daily_bands, axis=0)
+    daily_counts = np.sum(np.isfinite(daily_stack), axis=0)
+    daily_sum = np.nansum(daily_stack, axis=0)
+    daily_avg = np.full(base_shape, np.nan, dtype=np.float32)
+    daily_mask = daily_counts > 0
+    daily_avg[daily_mask] = (daily_sum[daily_mask] / daily_counts[daily_mask]).astype(np.float32)
+
+    fallback_stack = np.stack(fallback_bands, axis=0)
+    fallback_counts = np.sum(np.isfinite(fallback_stack), axis=0)
+    fallback_sum = np.nansum(fallback_stack, axis=0)
+    fallback_avg = np.full(base_shape, np.nan, dtype=np.float32)
+    fallback_mask = fallback_counts > 0
+    fallback_avg[fallback_mask] = (fallback_sum[fallback_mask] / fallback_counts[fallback_mask]).astype(np.float32)
+
+    # Production rule: use daily where available, fallback to 16-day only if no daily.
     sat_avg = np.full(base_shape, np.nan, dtype=np.float32)
-    valid_pixels = valid_counts > 0
-    sat_avg[valid_pixels] = (sat_sum[valid_pixels] / valid_counts[valid_pixels]).astype(np.float32)
+    sat_avg[daily_mask] = daily_avg[daily_mask]
+    sat_avg[(~daily_mask) & fallback_mask] = fallback_avg[(~daily_mask) & fallback_mask]
 
-    indicator = build_scenario_indicator(day, available_sensors, scenario_cols)
-    calib_row = match_calibration_row(coeff_df, scenario_cols, indicator)
+    calibrated = np.full(base_shape, np.nan, dtype=np.float32)
+    scenario_img = np.zeros(base_shape, dtype=np.int32)
 
-    if calib_row is None or not np.isfinite(sat_avg).any():
-        scenario_id = 0
-        calibrated = np.full(base_shape, np.nan, dtype=np.float32)
-    else:
+    # Daily scenarios (priority branch)
+    daily_code = np.zeros(base_shape, dtype=np.uint16)
+    for i, band in enumerate(daily_bands):
+        daily_code |= (np.isfinite(band).astype(np.uint16) << i)
+
+    for code in np.unique(daily_code[daily_mask]):
+        if code == 0:
+            continue
+        indicator = {c: 0 for c in scenario_cols}
+        active_keys: Set[str] = set()
+        for i, sensor_name in enumerate(DAILY_SENSOR_NAMES):
+            if (code >> i) & 1:
+                scenario_key = SENSOR_CONFIGS[sensor_name]["scenario_key"]
+                active_keys.add(scenario_key)
+                if scenario_key in indicator:
+                    indicator[scenario_key] = 1
+
+        calib_row = match_calibration_row_by_family(
+            coeff_df,
+            scenario_cols,
+            indicator,
+            scenario_family="daily",
+            active_sensor_keys=active_keys,
+        )
+        if calib_row is None:
+            continue
+
+        code_mask = daily_mask & (daily_code == code)
+        if not np.any(code_mask):
+            continue
+
         slope, intercept = get_training_coefficients(calib_row)
-        calibrated = (slope * sat_avg + intercept).astype(np.float32)
-        calibrated = np.clip(calibrated, 0, 1)
-        scenario_id = int(calib_row["scenario_id"])
+        calibrated[code_mask] = np.clip(slope * sat_avg[code_mask] + intercept, 0, 1).astype(np.float32)
+        scenario_img[code_mask] = int(calib_row["scenario_id"])
 
-    scenario_img = np.full(base_shape, scenario_id, dtype=np.uint16)
-    scenario_img[np.isnan(sat_avg)] = 0
+    # 16-day fallback scenarios (only where daily unavailable)
+    fallback_only_mask = (~daily_mask) & fallback_mask
+    fallback_code = np.zeros(base_shape, dtype=np.uint16)
+    for i, band in enumerate(fallback_bands):
+        fallback_code |= (np.isfinite(band).astype(np.uint16) << i)
+
+    for code in np.unique(fallback_code[fallback_only_mask]):
+        if code == 0:
+            continue
+        indicator = {c: 0 for c in scenario_cols}
+        active_keys: Set[str] = set()
+        for i, sensor_name in enumerate(FALLBACK_16DAY_SENSOR_NAMES):
+            if (code >> i) & 1:
+                scenario_key = SENSOR_CONFIGS[sensor_name]["scenario_key"]
+                active_keys.add(scenario_key)
+                if scenario_key in indicator:
+                    indicator[scenario_key] = 1
+
+        calib_row = match_calibration_row_by_family(
+            coeff_df,
+            scenario_cols,
+            indicator,
+            scenario_family="16day",
+            active_sensor_keys=active_keys,
+        )
+        if calib_row is None:
+            continue
+
+        code_mask = fallback_only_mask & (fallback_code == code)
+        if not np.any(code_mask):
+            continue
+
+        slope, intercept = get_training_coefficients(calib_row)
+        calibrated[code_mask] = np.clip(slope * sat_avg[code_mask] + intercept, 0, 1).astype(np.float32)
+        scenario_img[code_mask] = int(calib_row["scenario_id"])
 
     carra_flat = carra.ravel()
     calibrated_flat = calibrated.ravel()
@@ -347,6 +511,9 @@ def process_single_carra_file(carra_fp: str, train_dir: str, test_dir: str):
             "scenario": scenario_flat[valid],
         }
     )
+
+    if len(df_chunk) < 2:
+        return True, f"{day.strftime('%Y-%m-%d')} -> skipped (no valid calibrated pixels)"
 
     df_train, df_test = train_test_split(df_chunk, test_size=0.3, random_state=42)
     save_daily_hdf5(df_train, train_h5)

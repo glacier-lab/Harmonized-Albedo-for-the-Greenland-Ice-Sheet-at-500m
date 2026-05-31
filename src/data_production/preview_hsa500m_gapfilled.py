@@ -182,22 +182,44 @@ def simplify_sensor_name(sensor: str) -> str:
 def load_scenario_id_to_label(calibration_csv: str) -> Dict[int, str]:
     coeff = pd.read_csv(calibration_csv)
 
-    known_non_sensor_cols = {
-        "scenario_id", "scenario", "sensors", "n_sensors", "n_train", "n_test", "n_total",
-        "train_r_squared", "train_rmse", "train_mae", "train_bias",
-        "test_calib_r_squared", "test_calib_rmse", "test_calib_mae", "test_calib_bias",
-        "train_slope", "train_intercept", "test_calib_slope", "test_calib_intercept",
-        "slope", "intercept",
+    required_cols = {
+        "scenario_id",
+        "scenario_family",
+        "daily_sensor_groups",
+        "fallback_sensor_groups",
     }
-    sensor_cols = [c for c in coeff.columns if c not in known_non_sensor_cols]
+    missing = sorted(required_cols - set(coeff.columns))
+    if missing:
+        raise ValueError(
+            "Calibration CSV must contain latest harmonization columns: "
+            f"{', '.join(sorted(required_cols))}. Missing: {', '.join(missing)}"
+        )
+
+    def parse_sensor_list(value: object) -> List[str]:
+        if value is None:
+            return []
+        if isinstance(value, float) and np.isnan(value):
+            return []
+        text = str(value).strip()
+        if text == "":
+            return []
+        return [s.strip() for s in text.split(",") if s.strip()]
 
     scenario_map: Dict[int, str] = {}
     for _, row in coeff.iterrows():
         sid = int(row["scenario_id"])
         active_sensors: List[str] = []
-        for col in sensor_cols:
-            if int(row[col]) == 1:
-                active_sensors.append(simplify_sensor_name(col))
+
+        family = str(row["scenario_family"]).strip().lower()
+        if family == "daily":
+            active_sensors.extend(parse_sensor_list(row["daily_sensor_groups"]))
+        elif family in {"16day", "fallback"}:
+            active_sensors.extend(parse_sensor_list(row["fallback_sensor_groups"]))
+        else:
+            active_sensors.extend(parse_sensor_list(row["daily_sensor_groups"]))
+            active_sensors.extend(parse_sensor_list(row["fallback_sensor_groups"]))
+
+        active_sensors = [simplify_sensor_name(s) for s in active_sensors]
         active_sensors = sorted(set(active_sensors))
         scenario_map[sid] = "+".join(active_sensors) if active_sensors else "unknown"
 

@@ -72,7 +72,14 @@ def parse_output_date_tag(file_path):
 
 
 def process_single_file(file_path, out_folder, immask, mask_transform, mask_crs, mask_shape):
-    """Process one CARRA file and write one masked/reprojected GeoTIFF."""
+    """Process one CARRA file and write one masked/reprojected GeoTIFF.
+
+    Supports two file formats:
+    - Old format (pre-2025): coords 'Y' (lat) / 'X' (lon) in WGS84, requires
+      coordinate transform to EPSG:3413.
+    - New format (2025+): coords 'y' / 'x' already in EPSG:3413, with an
+      embedded 'spatial_ref' variable carrying the CRS and GeoTransform.
+    """
     filename = os.path.basename(file_path)
 
     try:
@@ -80,26 +87,35 @@ def process_single_file(file_path, out_folder, immask, mask_transform, mask_crs,
         out_path = os.path.join(out_folder, f"CARRA_Albedo_{date_tag}_500m.tif")
 
         with xr.open_dataset(file_path) as ds:
-            data = ds['al']
-            lat = ds['Y']
-            lon = ds['X']
+            data = np.squeeze(ds['al'].values) / 100.0  # Convert % -> fraction
 
-        data = np.squeeze(data.values)/100.0  # Convert to physical albedo
+            if 'x' in ds.coords and 'y' in ds.coords:
+                # --- New 2025+ format: already in EPSG:3413 ---
+                src_crs = CRS.from_wkt(ds['spatial_ref'].attrs['crs_wkt'])
+                gt = [float(v) for v in ds['spatial_ref'].attrs['GeoTransform'].split()]
+                # GeoTransform: [upper_left_x, x_res, 0, upper_left_y, 0, -y_res]
+                src_transform = Affine(gt[1], gt[2], gt[0], gt[4], gt[5], gt[3])
+            else:
+                # --- Old format (pre-2025): Y=lat, X=lon in WGS84 ---
+                lat = ds['Y'].values
+                lon = ds['X'].values
+                crs_wgs84 = CRS.from_epsg(4326)
+                src_crs = CRS.from_epsg(3413)
+                transformer = Transformer.from_crs(crs_wgs84, src_crs, always_xy=True)
+                x_proj, y_proj = transformer.transform(lon, lat)
+                src_transform = from_bounds(
+                    x_proj.min(), y_proj.min(), x_proj.max(), y_proj.max(),
+                    data.shape[1], data.shape[0],
+                )
+
         data[(data <= 0) | (data >= 1)] = np.nan
-
-        crs_wgs84 = CRS.from_epsg(4326)  # WGS84
-        crs_3413 = CRS.from_epsg(3413)   # EPSG:3413
-        transformer = Transformer.from_crs(crs_wgs84, crs_3413, always_xy=True)
-
-        x_proj, y_proj = transformer.transform(lon.values, lat.values)
-        src_transform = from_bounds(x_proj.min(), y_proj.min(), x_proj.max(), y_proj.max(), data.shape[1], data.shape[0])
 
         dst = np.empty(mask_shape, dtype=np.float32)
         reproject(
             source=data,
             destination=dst,
             src_transform=src_transform,
-            src_crs=CRS.from_epsg(3413),
+            src_crs=src_crs,
             dst_transform=mask_transform,
             dst_crs=mask_crs,
             resampling=Resampling.bilinear,
@@ -134,6 +150,7 @@ def process_single_file(file_path, out_folder, immask, mask_transform, mask_crs,
 # %%
 # --- Configuration ---
 im_mask_path = "/data_3/shunan_2/AU/hsa500m/PROMICE-2022IceMask.tif"
+# Set to the root folder; all subdirectories will be searched recursively.
 carra_input_folder = "/data_3/shunan_2/AU/hsa500m/CARRA/GL500m"
 out_folder = "/data_3/shunan_2/AU/hsa500m/CARRA_GL500m_geotiff"
 

@@ -29,8 +29,9 @@ missions = {
     "MODIS Aqua": ("2002-07-04", "2025-12-31", "MYD10A1.061(500m)"),
     "MODIS Terra/Aqua": ("2000-02-24", "2025-12-31", "MCD43A3.061(500m)"),
 
-    "VIIRS JPSS1": ("2018-01-01", "2025-12-31", "VJ143MA3.002(1km)"),
-    "VIIRS NPP": ("2012-01-17", "2025-12-31", "VNP43MA3.002(1km)"),
+    "VIIRS NPP": ("2012-01-17", "2025-12-31", "VNP43MA3.002(1km) & VNP09GA(500m/1km)"),
+    "VIIRS JPSS1": ("2018-01-01", "2025-12-31", "VJ143MA3.002(1km) & VJ109GA(500m/1km)"),
+    "VIIRS JPSS2": ("2023-02-10", "2025-12-31", "VJ209GA(500m/1km)"),
 
     "Sentinel 3": ("2017-04-01", "2025-12-31", "SICE3.0(500m)"),
 
@@ -51,6 +52,7 @@ sensor_colors = {
     "MODIS Terra/Aqua": ("#94ace6", "d"),
     "VIIRS JPSS1": ("#5a3918", "d"),
     "VIIRS NPP": ("#d5ac4a", "d"),
+    "VIIRS JPSS2": ("#cdcdd5", "d"),
     # Charmeleon palette for Sentinel 3, GCOM-C, CARRA
     "Sentinel 3": ("#ff836a", "o"), 
     "GCOM-C SGLI": ("#942010", "o"), 
