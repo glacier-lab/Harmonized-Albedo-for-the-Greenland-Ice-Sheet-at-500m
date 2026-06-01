@@ -180,10 +180,25 @@ print(f"Number of points used in regression: {df.count(selection=validation_sele
 print(f"Number of points in full dataset: {df.count():,}")
 print(results)
 
+results_with_full_selection = linregress_vaex(
+    df,
+    "carra_calibrated",
+    "hsa500m",
+    selection=None,  # No selection, use all data points
+    method=REGRESSION_METHOD,
+)
+print("\nRegression results with full selection (no calibration cap):")
+print(f"slope: {results_with_full_selection.slope}")
+print(f"intercept: {results_with_full_selection.intercept}")
+print(f"r2: {results_with_full_selection.rvalue**2}")
+print(f"p-value: {results_with_full_selection.pvalue}") 
+print(f"Number of points used in regression: {df.count():,}")
+print(results_with_full_selection)
 
 # %%
 fig, ax = plt.subplots(figsize=(8,7))
-ax.plot(np.array([0,1]), results.slope * np.array([0,1]) + results.intercept, color='red') # ols regression etm+ vs oli
+ax.plot(np.array([0,1]), results.slope * np.array([0,1]) + results.intercept, color='red', label='Regression with calibration cap') # rma regression
+ax.plot(np.array([0,1]), results_with_full_selection.slope * np.array([0,1]) + results_with_full_selection.intercept, color='black', label='Regression with full dataset') # rma regression with full selection
 ax.plot([0, 1], [0, 1], '--', color='gray', alpha=0.8, label='1:1 line')
 ax.set_xlim(0, 1)
 ax.set_ylim(0, 1)
@@ -196,7 +211,8 @@ df.viz.heatmap(
     colormap = cm.cm.haline
     )
 ax.set_aspect('equal')
-ax.set(xlabel="Downscaled CARRA Albedo 500m", ylabel="Harmonized Satellite Albedo 500m")
+ax.set(xlabel="Recalibrated CARRA Albedo 500m", ylabel="Harmonized Satellite Albedo 500m")
+ax.legend()
 fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/carra_hsa_calibration_testing.png", dpi=300)
 # close figure after saved
 # plt.close(fig)

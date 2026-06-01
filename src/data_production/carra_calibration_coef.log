@@ -1,16 +1,27 @@
-slope: 1.0305390934714678
-intercept: -0.05783276187202435
-r2: 0.5603863144204754
+training:
+slope: 1.0305390934088543
+intercept: -0.05783276183018404
+r2: 0.5603863147614329
 p-value: 0.0
 regression method: rma
 Number of points used in regression: 4,687,123,267
 Number of points in full dataset: 28,180,148,852
-RegressionResult(slope=1.0305390934714678, intercept=-0.05783276187202435, rvalue=0.7485895500342463, pvalue=0.0)
-slope: 1.0000185788904763
-intercept: -4.458452405042834e-06
-r2: 0.560416698827795
+RegressionResult(slope=1.0305390934088543, intercept=-0.05783276183018404, rvalue=0.7485895502619796, pvalue=0.0)
+
+testing:
+slope: 1.0000185788901643
+intercept: -4.458452191657969e-06
+r2: 0.5604166988280114
 p-value: 0.0
 regression method: rma
 Number of points used in regression: 2,009,366,026
 Number of points in full dataset: 12,077,212,691
-RegressionResult(slope=1.0000185788904763, intercept=-4.458452405042834e-06, rvalue=0.7486098441964245, pvalue=0.0)
+RegressionResult(slope=1.0000185788901643, intercept=-4.458452191657969e-06, rvalue=0.7486098441965691, pvalue=0.0)
+
+Regression results with full selection (no calibration cap):
+slope: 1.270010007338264
+intercept: -0.21974438228958693
+r2: 0.4406852962825095
+p-value: 0.0
+Number of points used in regression: 12,077,212,691
+RegressionResult(slope=1.270010007338264, intercept=-0.21974438228958693, rvalue=0.6638413186014482, pvalue=0.0)
