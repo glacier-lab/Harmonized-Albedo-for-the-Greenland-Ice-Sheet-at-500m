@@ -27,7 +27,7 @@ import cmocean
 
 DEFAULT_AWS_PATH = '/data_3/shunan_2/AU/hsa500m/PROMICE/promice_day.csv'
 DEFAULT_POINT2PIX_DIR = '/data_3/shunan_2/AU/hsa500m/point2pix'
-DEFAULT_SENSOR = 'HSA500m'  # Change this to switch sensors (e.g., 'MOD10A1', 'MYD10A1', etc.)
+DEFAULT_SENSOR = 'MCD43A3'  # Change this to switch sensors (e.g., 'MOD10A1', 'MYD10A1', etc.)
 
 # Edit these values to switch input data without using command line arguments.
 AWS_PATH = DEFAULT_AWS_PATH
@@ -47,7 +47,8 @@ SENSOR_TO_POINT2PIX = {
     'VIIRS_SR_VJ209GA': 'point2pix_viirs_sr_albedo_vj209ga.csv',
     'GCOM-C': 'point2pix_gcomc_sr_albedo.csv',
     'SICE': 'point2pix_sice_rebuild.csv',
-    'HSA500m': 'point2pix_hsa500m_gapfilled.csv'
+    'HSA500m': 'point2pix_hsa500m_gapfilled.csv',
+    'CARRA': 'point2pix_carra.csv',
 }
 
 #%% 
