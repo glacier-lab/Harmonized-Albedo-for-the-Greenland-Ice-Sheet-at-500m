@@ -35,7 +35,7 @@ sice_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_sice_rebuild.csv'
 viirs_sr_vnp09ga_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vnp09ga.csv'
 viirs_sr_vj109ga_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vj109ga.csv'
 viirs_sr_vj209ga_path = '/data_3/shunan_2/AU/hsa500m/point2pix/point2pix_viirs_sr_albedo_vj209ga.csv'
-PLOT_FIGURES = False # Set to False to skip plotting and only calculate metrics
+PLOT_FIGURES = True # Set to False to skip plotting and only calculate metrics
 
 # Folder to save calibration figures
 calibration_output_folder = '/data_3/shunan_2/AU/hsa500m/calibration'

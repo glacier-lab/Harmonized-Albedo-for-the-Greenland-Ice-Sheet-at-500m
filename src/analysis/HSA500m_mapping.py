@@ -1,9 +1,22 @@
+"""
+Generate publication-style maps for the HSA500m Greenland albedo product.
+
+This script creates two figure groups:
+1) Harmonization maps comparing source datasets with HSA500m and its QA band.
+2) Trend maps (linear slope, Mann-Kendall tau, Sen's slope) over a dark
+    context basemap for visual interpretation.
+
+Notes:
+- Input/output paths are configured as absolute paths in this file.
+- Trend maps mask non-significant pixels using p-value >= 0.05.
+"""
 #%%
 import pandas as pd
 import numpy as np
 import rasterio as rio
 from rasterio.plot import show
 import matplotlib.pyplot as plt
+import contextily as ctx
 from matplotlib import colors
 from matplotlib.ticker import MaxNLocator
 import seaborn as sns
@@ -159,9 +172,8 @@ fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-a
 # -----------------------------------------------------------------------------
 # albedo trend mapping
 # -----------------------------------------------------------------------------
-# impath_trend = "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_JJA_2000_2024.tif"
-# impath_trend = "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_JJA_2000_2019.tif"
-impath_trend = "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_daily_JJA20002024.tif"
+# impath_trend = "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_JJA_2000_2025.tif"
+impath_trend = "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_2000_2025.tif"
 with rio.open(impath_trend) as src:
     # Band 1: linear_slope_per_year
     # Band 2: linear_intercept
@@ -178,6 +190,29 @@ with rio.open(impath_trend) as src:
     transform = src.transform
     crs = src.crs
 
+# print statistics of linear_slope_per_year, mk_tau, and sens_slope_per_year (p<0.05)
+# print min, max, mean, median, std
+print("Linear Slope per Year (p<0.05):")
+print(f"  Min: {np.nanmin(linear_slope_per_year):.6f}")
+print(f"  Max: {np.nanmax(linear_slope_per_year):.6f}")
+print(f"  Mean: {np.nanmean(linear_slope_per_year):.6f}")
+print(f"  Median: {np.nanmedian(linear_slope_per_year):.6f}")
+print(f"  Std: {np.nanstd(linear_slope_per_year):.6f}")
+
+print("Mann-Kendall Tau (p<0.05):")
+print(f"  Min: {np.nanmin(mk_tau):.6f}")
+print(f"  Max: {np.nanmax(mk_tau):.6f}")
+print(f"  Mean: {np.nanmean(mk_tau):.6f}")
+print(f"  Median: {np.nanmedian(mk_tau):.6f}")
+print(f"  Std: {np.nanstd(mk_tau):.6f}")
+
+print("Sen's Slope per Year (p<0.05):")
+print(f"  Min: {np.nanmin(sens_slope_per_year):.6f}")
+print(f"  Max: {np.nanmax(sens_slope_per_year):.6f}")
+print(f"  Mean: {np.nanmean(sens_slope_per_year):.6f}")
+print(f"  Median: {np.nanmedian(sens_slope_per_year):.6f}")
+print(f"  Std: {np.nanstd(sens_slope_per_year):.6f}")
+
 # mask out pixels with p-value >= 0.05
 linear_slope_per_year[linear_pvalue >= 0.05] = np.nan
 mk_tau[mk_pvalue >= 0.05] = np.nan
@@ -186,38 +221,79 @@ sens_slope_per_year[mk_pvalue >= 0.05] = np.nan
 # plot the trends 1 * 3 subplots for linear slope, mk tau, and sens slope
 fig_trend, axes_trend = plt.subplots(1, 3, figsize=(18, 6))
 # fig_trend.subplots_adjust(left=0.03, right=0.90, top=0.96, bottom=0.04, wspace=0.1, hspace=0.08)
-kwargs = {'format': '%.2f'}
 
-im_ls = show(linear_slope_per_year, transform=transform, ax=axes_trend[0], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.01, vmax=0.01)
-sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normalize(vmin=-0.01, vmax=0.01))
+dark_basemap = getattr(ctx.providers, "CartoDB").get("DarkMatter")
+
+im_ls = show(linear_slope_per_year, transform=transform, ax=axes_trend[0], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.007757, vmax=0.007757)
+ctx.add_basemap(axes_trend[0], crs=crs, source=dark_basemap, attribution=False)
+im_ls = show(linear_slope_per_year, transform=transform, ax=axes_trend[0], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.007757, vmax=0.007757, alpha=0.88)
+sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normalize(vmin=-0.007757, vmax=0.007757))
 sm.set_array([])
-cbar_ls = fig_trend.colorbar(sm, ax=axes_trend[0], orientation="vertical", **kwargs)
+cbar_ls = fig_trend.colorbar(sm, ax=axes_trend[0], orientation="vertical", format="%.3f")
 # cbar_ls.ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
-cbar_ls.set_label("Linear Slope per Year")
+cbar_ls.set_label("Linear Slope per Year (p<0.05)")
 # axes_trend[0].set_title("(a) Linear Trend", y=1.02, pad=4)
 axes_trend[0].axis("off")
 
-im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmo.cm, "balance_r"), vmin=-1, vmax=1)
-sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normalize(vmin=-1, vmax=1))
+im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.420439, vmax=0.420439)
+ctx.add_basemap(axes_trend[1], crs=crs, source=dark_basemap, attribution=False)
+im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.420439, vmax=0.420439, alpha=0.88)
+sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normalize(vmin=-0.420439, vmax=0.420439))
 sm.set_array([])
-cbar_mk = fig_trend.colorbar(sm, ax=axes_trend[1], orientation="vertical", **kwargs)
+cbar_mk = fig_trend.colorbar(sm, ax=axes_trend[1], orientation="vertical", format="%.2f")
 # cbar_mk.ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
-cbar_mk.set_label("Mann-Kendall Tau")
+cbar_mk.set_label("Mann-Kendall Tau (p<0.05)")
 # axes_trend[1].set_title("(b) Mann-Kendall Tau", y=1.02, pad=4)
 axes_trend[1].axis("off")
 
-im_sens = show(sens_slope_per_year, transform=transform, ax=axes_trend[2], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.01, vmax=0.01)
-sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normalize(vmin=-0.01, vmax=0.01))
+im_sens = show(sens_slope_per_year, transform=transform, ax=axes_trend[2], cmap=getattr(cmo.cm, "curl_r"), vmin=-0.007290, vmax=0.007290)
+ctx.add_basemap(axes_trend[2], crs=crs, source=dark_basemap, attribution=False)
+im_sens = show(sens_slope_per_year, transform=transform, ax=axes_trend[2], cmap=getattr(cmo.cm, "curl_r"), vmin=-0.007290, vmax=0.007290, alpha=0.88)
+sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "curl_r"), norm=colors.Normalize(vmin=-0.007290, vmax=0.007290))
 sm.set_array([])
-cbar_sens = fig_trend.colorbar(sm, ax=axes_trend[2], orientation="vertical", **kwargs)
+cbar_sens = fig_trend.colorbar(sm, ax=axes_trend[2], orientation="vertical", format="%.3f")
 # cbar_sens.ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
-cbar_sens.set_label("Sen's Slope per Year")
+cbar_sens.set_label("Sen's Slope per Year (p<0.05)")
 # axes_trend[2].set_title("(c) Sen's Slope", y=1.02, pad=4)
 axes_trend[2].axis("off")
 
 # add subplot labels
-axes_trend[0].text(0.02, 0.1, "(a)", transform=axes_trend[0].transAxes, va="top", ha="left")
-axes_trend[1].text(0.02, 0.1, "(b)", transform=axes_trend[1].transAxes, va="top", ha="left")
-axes_trend[2].text(0.02, 0.1, "(c)", transform=axes_trend[2].transAxes, va="top", ha="left")
+axes_trend[0].text(0.02, 0.1, "(a)", transform=axes_trend[0].transAxes, va="top", ha="left", color="white")
+axes_trend[1].text(0.02, 0.1, "(b)", transform=axes_trend[1].transAxes, va="top", ha="left", color="white")
+axes_trend[2].text(0.02, 0.1, "(c)", transform=axes_trend[2].transAxes, va="top", ha="left", color="white")
 
+# add scalebar to the last map
+scalebar = ScaleBar(
+            dx=1.0,
+            units="m",
+            fixed_value=300,
+            fixed_units="km",
+            location="lower right",
+            frameon=False,
+            color="white",
+        )
+axes_trend[2].add_artist(scalebar)
+
+fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.png", dpi=300, bbox_inches="tight")
+fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.pdf", dpi=300)
 # %%
+'''
+Linear Slope per Year (p<0.05):
+  Min: -0.007757
+  Max: 0.005362
+  Mean: -0.000208
+  Median: -0.000199
+  Std: 0.000290
+Mann-Kendall Tau (p<0.05):
+  Min: -0.420439
+  Max: 0.231552
+  Mean: -0.047701
+  Median: -0.041498
+  Std: 0.043960
+Sen's Slope per Year (p<0.05):
+  Min: -0.007290
+  Max: 0.005212
+  Mean: -0.000079
+  Median: -0.000045
+  Std: 0.000199
+'''
