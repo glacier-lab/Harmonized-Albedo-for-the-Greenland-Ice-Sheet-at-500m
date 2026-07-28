@@ -275,7 +275,7 @@ scalebar = ScaleBar(
 axes_trend[2].add_artist(scalebar)
 
 fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.png", dpi=300, bbox_inches="tight")
-fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.pdf", dpi=300)
+fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.pdf", dpi=300, bbox_inches="tight")
 # %%
 '''
 Linear Slope per Year (p<0.05):
