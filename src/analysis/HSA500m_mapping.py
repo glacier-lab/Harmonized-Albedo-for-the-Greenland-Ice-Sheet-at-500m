@@ -23,7 +23,7 @@ import seaborn as sns
 from matplotlib_scalebar.scalebar import ScaleBar
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import cmocean as cmo
-
+import cmcrameri as cmc
 sns.set_theme(font_scale=1.5, style="white")
 
 #%%
@@ -235,10 +235,10 @@ cbar_ls.set_label("Linear Slope per Year (p<0.05)")
 # axes_trend[0].set_title("(a) Linear Trend", y=1.02, pad=4)
 axes_trend[0].axis("off")
 
-im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.420439, vmax=0.420439)
+im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmc.cm, "roma"), vmin=-0.420439, vmax=0.420439)
 ctx.add_basemap(axes_trend[1], crs=crs, source=dark_basemap, attribution=False)
-im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.420439, vmax=0.420439, alpha=0.88)
-sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normalize(vmin=-0.420439, vmax=0.420439))
+im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmc.cm, "roma"), vmin=-0.420439, vmax=0.420439, alpha=0.88)
+sm = plt.cm.ScalarMappable(cmap=getattr(cmc.cm, "roma"), norm=colors.Normalize(vmin=-0.420439, vmax=0.420439))
 sm.set_array([])
 cbar_mk = fig_trend.colorbar(sm, ax=axes_trend[1], orientation="vertical", format="%.2f")
 # cbar_mk.ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
