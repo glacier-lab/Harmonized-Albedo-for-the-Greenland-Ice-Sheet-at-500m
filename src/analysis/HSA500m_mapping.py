@@ -231,7 +231,7 @@ sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normal
 sm.set_array([])
 cbar_ls = fig_trend.colorbar(sm, ax=axes_trend[0], orientation="vertical", format="%.3f")
 # cbar_ls.ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
-cbar_ls.set_label("Linear Slope per Year (p<0.05)")
+cbar_ls.set_label(r"Linear Trend $yr^{-1}$ (p<0.05)")
 # axes_trend[0].set_title("(a) Linear Trend", y=1.02, pad=4)
 axes_trend[0].axis("off")
 
@@ -242,7 +242,7 @@ sm = plt.cm.ScalarMappable(cmap=getattr(cmc.cm, "roma"), norm=colors.Normalize(v
 sm.set_array([])
 cbar_mk = fig_trend.colorbar(sm, ax=axes_trend[1], orientation="vertical", format="%.2f")
 # cbar_mk.ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
-cbar_mk.set_label("Mann-Kendall Tau (p<0.05)")
+cbar_mk.set_label(r"Mann-Kendall's $\tau$ (p<0.05)")
 # axes_trend[1].set_title("(b) Mann-Kendall Tau", y=1.02, pad=4)
 axes_trend[1].axis("off")
 
@@ -253,7 +253,7 @@ sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "curl_r"), norm=colors.Normalize
 sm.set_array([])
 cbar_sens = fig_trend.colorbar(sm, ax=axes_trend[2], orientation="vertical", format="%.3f")
 # cbar_sens.ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
-cbar_sens.set_label("Sen's Slope per Year (p<0.05)")
+cbar_sens.set_label(r"Sen's Slope $yr^{-1}$ (p<0.05)")
 # axes_trend[2].set_title("(c) Sen's Slope", y=1.02, pad=4)
 axes_trend[2].axis("off")
 
