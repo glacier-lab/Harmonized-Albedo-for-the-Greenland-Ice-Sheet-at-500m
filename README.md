@@ -6,7 +6,7 @@
 This repository contains scripts to produce a harmonized, gap-filled albedo product for the Greenland Ice Sheet (GrIS) at 500m spatial resolution. The product combines multiple satellite-based albedo datasets (MODIS: MOD10A1, MYD10A1, MCD43A3, VIIRS: VJ143MA3, VNP43MA3, SICE, AND GCOM-C) with CARRA reanalysis data to create a seamless daily albedo time series. 
 
 
-Note: This repository is part of a manuscript that is currently under preparation. The scripts and data products are provided here for transparency and reproducibility. We welcome feedback and suggestions for improvement.
+Note: This repository is part of a manuscript that is currently submitted for peer review. The scripts and data products are provided here for transparency and reproducibility. We welcome feedback and suggestions for improvement.
 
 ## Data Product Structure
 
@@ -15,7 +15,7 @@ The final product consists of **2-band GeoTIFF files** with the following specif
 ### File Format
 - **Filename**: `hsa500m_gapfilled_YYYYMMDD.tif`
 - **Spatial Resolution**: 500m
-- **Projection**: EPSG:3413 (NSIDC Polar Stereographic North)
+- **CRS**: EPSG:3413 (NSIDC Polar Stereographic North)
 - **Data Type**: Float32 (0.0–1.0 range)
 - **Compression**: LZW with predictor=3
 - Albedo images are also available in NetCDF format with the same structure and metadata.
@@ -53,6 +53,9 @@ The final product consists of **2-band GeoTIFF files** with the following specif
 Use [`src/erda/download_from_erda.py`](src/erda/download_from_erda.py) to list and download files from AU ERDA share link.
 
 [![MCD43A3.061_bluesky](https://img.shields.io/badge/MCD43A3.061-bluesky-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hZYlpScSdd)
+[![VNP43MA3_bluesky](https://img.shields.io/badge/VNP43MA3.061-bluesky-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=CSwPBFpv1u)
+[![VJ143MA3_bluesky](https://img.shields.io/badge/VJ143MA3.061-bluesky-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=B4ShAjRJNC)
+
 [![GCOM-C_Albedo](https://img.shields.io/badge/GCOMC_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=HrUk38JXsL)
 [![VIIRS_SR_albedo_VJ109GA](https://img.shields.io/badge/VJ109GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hZYlpScSdd)
 [![VIIRS_SR_albedo_VJ209GA](https://img.shields.io/badge/VJ209GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hW3HjsD51V)
