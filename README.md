@@ -57,7 +57,7 @@ Use [`src/erda/download_from_erda.py`](src/erda/download_from_erda.py) to list a
 [![VJ143MA3_bluesky](https://img.shields.io/badge/VJ143MA3.061-bluesky-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=B4ShAjRJNC)
 
 [![GCOM-C_Albedo](https://img.shields.io/badge/GCOMC_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=HrUk38JXsL)
-[![VIIRS_SR_albedo_VJ109GA](https://img.shields.io/badge/VJ109GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hZYlpScSdd)
+[![VIIRS_SR_albedo_VJ109GA](https://img.shields.io/badge/VJ109GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=FE06NdTc16)
 [![VIIRS_SR_albedo_VJ209GA](https://img.shields.io/badge/VJ209GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hW3HjsD51V)
 [![VIIRS_SR_albedo_VNP09GA](https://img.shields.io/badge/VNP09GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=CAmcmQlPlF)
 [![CARRA500m_geotiff](https://img.shields.io/badge/CARRA500m-geotiff-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=AYp8IaLql5)
