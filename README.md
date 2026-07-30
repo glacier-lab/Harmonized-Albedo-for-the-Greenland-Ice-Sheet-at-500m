@@ -18,6 +18,7 @@ The final product consists of **2-band GeoTIFF files** with the following specif
 - **Projection**: EPSG:3413 (NSIDC Polar Stereographic North)
 - **Data Type**: Float32 (0.0–1.0 range)
 - **Compression**: LZW with predictor=3
+- Albedo images are also available in NetCDF format with the same structure and metadata.
 
 ### Band 1: Harmonized Satellite Albedo (hsa500m_gapfilled)
 - **Content**: Gap-filled surface albedo values
@@ -35,6 +36,69 @@ The final product consists of **2-band GeoTIFF files** with the following specif
   - **−1**: Filled with calibrated CARRA and pre-calibration CARRA albedo ≥ 0.83 (high-albedo cap flag)
   - **NaN**: No valid source data available
   - **Note**: Scenario IDs are defined in `calibration_coefficients.csv` and correspond to specific sensor combinations and calibration coefficients. CARRA albedo data have a data cap so we can flag pixels where the original CARRA value exceeds the cap, indicating a higher uncertainty in the gap-filled value.
+
+## Download Data From ERDA
+[![hsa500m_geotiff](https://img.shields.io/badge/HSA500m-geotiff-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=cB9iYORfqs)
+
+🔗https://anon.erda.au.dk/cgi-sid/ls.py?share_id=cB9iYORfqs
+
+[![hsa500m_netcdf](https://img.shields.io/badge/HSA500m-netcdf-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=eUIOLTdUZR)
+
+🔗https://anon.erda.au.dk/cgi-sid/ls.py?share_id=eUIOLTdUZR
+
+[![hsa500m_preview](https://img.shields.io/badge/HSA500m-preview-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=homDKceSWs)
+
+🔗https://anon.erda.au.dk/cgi-sid/ls.py?share_id=homDKceSWs
+
+Use [`src/erda/download_from_erda.py`](src/erda/download_from_erda.py) to list and download files from AU ERDA share link.
+
+[![MCD43A3.061_bluesky](https://img.shields.io/badge/MCD43A3.061-bluesky-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hZYlpScSdd)
+[![GCOM-C_Albedo](https://img.shields.io/badge/GCOMC_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=HrUk38JXsL)
+[![VIIRS_SR_albedo_VJ109GA](https://img.shields.io/badge/VJ109GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hZYlpScSdd)
+[![VIIRS_SR_albedo_VJ209GA](https://img.shields.io/badge/VJ209GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=hW3HjsD51V)
+[![VIIRS_SR_albedo_VNP09GA](https://img.shields.io/badge/VNP09GA_SR-Albedo-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=CAmcmQlPlF)
+[![CARRA500m_geotiff](https://img.shields.io/badge/CARRA500m-geotiff-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=AYp8IaLql5)
+
+
+### Features
+- Interactive prompts for listing URL, output folder, dry-run, overwrite, and file limit
+- Optional non-interactive mode with command-line flags
+- Per-file progress and download speed display during transfer
+
+### Interactive Usage (recommended)
+Run the script and answer prompts:
+
+```bash
+python src/erda/download_from_erda.py
+```
+
+Prompted options:
+- Listing URL (ERDA `ls.py` link)
+- Output directory
+- Dry run (`y/n`, default: `n`)
+- Overwrite existing files (`y/n`, default: `n`)
+- Limit number of files (`none` for all)
+
+### Non-interactive Usage
+Example for a different share:
+
+```bash
+python src/erda/download_from_erda.py \
+  --no-input \
+  --listing-url "https://anon.erda.au.dk/cgi-sid/ls.py?share_id=cB9iYORfqs" \
+  --output-dir data/erda_downloads \
+  --limit 100
+```
+
+Dry-run example (list files without downloading):
+
+```bash
+python src/erda/download_from_erda.py \
+  --no-input \
+  --listing-url "https://anon.erda.au.dk/cgi-sid/ls.py?share_id=cB9iYORfqs" \
+  --dry-run \
+  --limit 10
+```
 
 ## Processing Workflow
 
