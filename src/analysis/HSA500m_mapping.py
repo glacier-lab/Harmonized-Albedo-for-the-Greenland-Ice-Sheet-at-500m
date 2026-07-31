@@ -222,10 +222,10 @@ sens_slope_per_year[mk_pvalue >= 0.05] = np.nan
 fig_trend, axes_trend = plt.subplots(1, 3, figsize=(18, 6))
 # fig_trend.subplots_adjust(left=0.03, right=0.90, top=0.96, bottom=0.04, wspace=0.1, hspace=0.08)
 
-dark_basemap = getattr(ctx.providers, "CartoDB").get("DarkMatter")
+gray_basemap = getattr(ctx.providers, "CartoDB").get("PositronNoLabels")
 
 im_ls = show(linear_slope_per_year, transform=transform, ax=axes_trend[0], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.007757, vmax=0.007757)
-ctx.add_basemap(axes_trend[0], crs=crs, source=dark_basemap, attribution=False)
+ctx.add_basemap(axes_trend[0], crs=crs, source=gray_basemap, attribution=False)
 im_ls = show(linear_slope_per_year, transform=transform, ax=axes_trend[0], cmap=getattr(cmo.cm, "balance_r"), vmin=-0.007757, vmax=0.007757, alpha=0.88)
 sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "balance_r"), norm=colors.Normalize(vmin=-0.007757, vmax=0.007757))
 sm.set_array([])
@@ -236,7 +236,7 @@ cbar_ls.set_label(r"Linear Trend $yr^{-1}$ (p<0.05)")
 axes_trend[0].axis("off")
 
 im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmc.cm, "roma"), vmin=-0.420439, vmax=0.420439)
-ctx.add_basemap(axes_trend[1], crs=crs, source=dark_basemap, attribution=False)
+ctx.add_basemap(axes_trend[1], crs=crs, source=gray_basemap, attribution=False)
 im_mk = show(mk_tau, transform=transform, ax=axes_trend[1], cmap=getattr(cmc.cm, "roma"), vmin=-0.420439, vmax=0.420439, alpha=0.88)
 sm = plt.cm.ScalarMappable(cmap=getattr(cmc.cm, "roma"), norm=colors.Normalize(vmin=-0.420439, vmax=0.420439))
 sm.set_array([])
@@ -247,7 +247,7 @@ cbar_mk.set_label(r"Mann-Kendall's $\tau$ (p<0.05)")
 axes_trend[1].axis("off")
 
 im_sens = show(sens_slope_per_year, transform=transform, ax=axes_trend[2], cmap=getattr(cmo.cm, "curl_r"), vmin=-0.007290, vmax=0.007290)
-ctx.add_basemap(axes_trend[2], crs=crs, source=dark_basemap, attribution=False)
+ctx.add_basemap(axes_trend[2], crs=crs, source=gray_basemap, attribution=False)
 im_sens = show(sens_slope_per_year, transform=transform, ax=axes_trend[2], cmap=getattr(cmo.cm, "curl_r"), vmin=-0.007290, vmax=0.007290, alpha=0.88)
 sm = plt.cm.ScalarMappable(cmap=getattr(cmo.cm, "curl_r"), norm=colors.Normalize(vmin=-0.007290, vmax=0.007290))
 sm.set_array([])
@@ -258,9 +258,9 @@ cbar_sens.set_label(r"Sen's Slope $yr^{-1}$ (p<0.05)")
 axes_trend[2].axis("off")
 
 # add subplot labels
-axes_trend[0].text(0.02, 0.1, "(a)", transform=axes_trend[0].transAxes, va="top", ha="left", color="white")
-axes_trend[1].text(0.02, 0.1, "(b)", transform=axes_trend[1].transAxes, va="top", ha="left", color="white")
-axes_trend[2].text(0.02, 0.1, "(c)", transform=axes_trend[2].transAxes, va="top", ha="left", color="white")
+axes_trend[0].text(0.02, 0.1, "(a)", transform=axes_trend[0].transAxes, va="top", ha="left", color="black")
+axes_trend[1].text(0.02, 0.1, "(b)", transform=axes_trend[1].transAxes, va="top", ha="left", color="black")
+axes_trend[2].text(0.02, 0.1, "(c)", transform=axes_trend[2].transAxes, va="top", ha="left", color="black")
 
 # add scalebar to the last map
 scalebar = ScaleBar(
@@ -270,7 +270,7 @@ scalebar = ScaleBar(
             fixed_units="km",
             location="lower right",
             frameon=False,
-            color="white",
+            color="black",
         )
 axes_trend[2].add_artist(scalebar)
 
