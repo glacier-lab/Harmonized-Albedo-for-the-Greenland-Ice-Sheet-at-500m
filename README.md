@@ -3,7 +3,7 @@
 
 ## Overview
 
-This repository contains scripts to produce a harmonized, gap-filled albedo product for the Greenland Ice Sheet (GrIS) at 500m spatial resolution. The product combines multiple satellite-based albedo datasets (MODIS: MOD10A1, MYD10A1, MCD43A3, VIIRS: VJ143MA3, VNP43MA3, SICE, AND GCOM-C) with CARRA reanalysis data to create a seamless daily albedo time series. 
+This repository contains scripts to produce a harmonized, gap-filled albedo product for the Greenland Ice Sheet (GrIS) at 500m spatial resolution. The product harmonizes multiple satellite-based albedo datasets (MODIS: MOD10A1, MYD10A1, MCD43A3; VIIRS: VJ143MA3, VNP43MA3, VJ109GA, VJ209GA, and VNP09GA; SICE; and GCOM-C) and gapfilled by downscaled CARRA climate reanalysis data to create a seamless daily albedo time series. 
 
 
 Note: This repository is part of a manuscript that is currently submitted for peer review. The scripts and data products are provided here for transparency and reproducibility. We welcome feedback and suggestions for improvement.
