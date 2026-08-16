@@ -1,5 +1,5 @@
 """
-High-performance Mann-Kendall trend detection for HSA500m on large servers.
+High-performance Mann-Kendall trend detection for HSA500m on large servers. NOT USED. 
 
 Design goals:
 - Use ~40% of a 255-thread / 1 TB server
