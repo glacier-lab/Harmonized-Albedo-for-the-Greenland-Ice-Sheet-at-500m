@@ -35,7 +35,7 @@ The final product consists of **2-band GeoTIFF files** with the following specif
   - **0**: Filled with calibrated CARRA and pre-calibration CARRA albedo < 0.83
   - **−1**: Filled with calibrated CARRA and pre-calibration CARRA albedo ≥ 0.83 (high-albedo cap flag)
   - **NaN**: No valid source data available
-  - **Note**: Scenario IDs are defined in `calibration_coefficients.csv` and correspond to specific sensor combinations and calibration coefficients. CARRA albedo data have a data cap so we can flag pixels where the original CARRA value exceeds the cap, indicating a higher uncertainty in the gap-filled value.
+  - **Note**: Scenario IDs are defined in [`stat/calibration_coefficients.csv`](stat/calibration_coefficients.csv) and correspond to specific sensor combinations and calibration coefficients. CARRA albedo data have a data cap so we can flag pixels where the original CARRA value exceeds the cap, indicating a higher uncertainty in the gap-filled value.
 
 ## Download Data From ERDA
 [![hsa500m_geotiff](https://img.shields.io/badge/HSA500m-geotiff-blue)](https://anon.erda.au.dk/cgi-sid/ls.py?share_id=cB9iYORfqs)
