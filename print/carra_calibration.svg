@@ -8,7 +8,7 @@
    version="1.1"
    id="svg1"
    xml:space="preserve"
-   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
    sodipodi:docname="carra_calibration.svg"
    inkscape:export-filename="carra_calibration.pdf"
    inkscape:export-xdpi="300"
@@ -29,12 +29,12 @@
      inkscape:document-units="mm"
      showborder="false"
      inkscape:zoom="0.73512617"
-     inkscape:cx="1042.6782"
+     inkscape:cx="1043.3583"
      inkscape:cy="521.67916"
-     inkscape:window-width="2560"
-     inkscape:window-height="1369"
-     inkscape:window-x="1912"
-     inkscape:window-y="-8"
+     inkscape:window-width="3200"
+     inkscape:window-height="1711"
+     inkscape:window-x="2391"
+     inkscape:window-y="-9"
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1" /><defs
      id="defs1"><rect
@@ -138,38 +138,38 @@
        x="-290.97018"
        y="0"><tspan
          x="282.79492"
-         y="923.04779"
-         id="tspan4"><tspan
+         y="923.32562"
+         id="tspan6"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan3">Slope:1.0305
+           id="tspan1">Slope:1.0305
 </tspan></tspan><tspan
          x="282.79492"
-         y="953.43152"
-         id="tspan10"><tspan
+         y="953.60345"
+         id="tspan8"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan5">Intercept: -0.0578
+           id="tspan7">Intercept: -0.0578
 </tspan></tspan><tspan
          x="282.79492"
-         y="983.81525"
-         id="tspan14"><tspan
+         y="983.88128"
+         id="tspan39"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan11">R</tspan><tspan
+           id="tspan9">R</tspan><tspan
            style="font-size:65%;baseline-shift:super"
-           id="tspan12">2</tspan><tspan
+           id="tspan15">2</tspan><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan13">: 0.56 (p&lt;0.001)
+           id="tspan38">: 0.56 (p&lt;0.001)
 </tspan></tspan><tspan
          x="282.79492"
-         y="1014.199"
-         id="tspan17"><tspan
+         y="1014.1591"
+         id="tspan41"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan16">Number of points with calibration cap: 4,687,123,267
+           id="tspan40">Number of points below calibration cap: 4,687,123,267
 </tspan></tspan><tspan
          x="282.79492"
-         y="1044.5827"
-         id="tspan19"><tspan
+         y="1044.4369"
+         id="tspan43"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan18">Number of points with full dataset: 28,180,148,852
+           id="tspan42">Number of points with full dataset: 28,180,148,852
 </tspan></tspan></text><text
        xml:space="preserve"
        transform="matrix(0.26458333,0,0,0.26458333,162.81324,0.72013943)"
@@ -178,56 +178,56 @@
        x="-290.97018"
        y="0"><tspan
          x="282.79492"
-         y="923.04779"
-         id="tspan21"><tspan
+         y="923.32562"
+         id="tspan45"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan20">Regression with calibration cap:
+           id="tspan44">Regression below calibration cap:
 </tspan></tspan><tspan
          x="282.79492"
-         y="953.43152"
-         id="tspan23"><tspan
+         y="953.60345"
+         id="tspan47"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan22">Slope:1.0000, Intercept: 0.0000
+           id="tspan46">Slope:1.0000, Intercept: 0.0000
 </tspan></tspan><tspan
          x="282.79492"
-         y="983.81525"
-         id="tspan27"><tspan
+         y="983.88128"
+         id="tspan51"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan24">R</tspan><tspan
+           id="tspan48">R</tspan><tspan
            style="font-size:65%;baseline-shift:super"
-           id="tspan25">2</tspan><tspan
+           id="tspan49">2</tspan><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan26">: 0.56 (p&lt;0.001)
+           id="tspan50">: 0.56 (p&lt;0.001)
 </tspan></tspan><tspan
          x="282.79492"
-         y="1014.199"
-         id="tspan29"><tspan
+         y="1014.1591"
+         id="tspan53"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan28">Number of points with calibration cap: 2,009,366,026
+           id="tspan52">Number of points below calibration cap: 2,009,366,026
 </tspan></tspan><tspan
          x="282.79492"
-         y="1044.5827"
-         id="tspan31"><tspan
+         y="1044.4369"
+         id="tspan55"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan30">Regression with full dataset:
+           id="tspan54">Regression with full dataset:
 </tspan></tspan><tspan
          x="282.79492"
-         y="1074.9665"
-         id="tspan33"><tspan
+         y="1074.7148"
+         id="tspan57"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan32">Slope: 1.2700, Intercept: -0.2197
+           id="tspan56">Slope: 1.2700, Intercept: -0.2197
 </tspan></tspan><tspan
          x="282.79492"
-         y="1105.3503"
-         id="tspan35"><tspan
+         y="1104.9926"
+         id="tspan59"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan34">R2: 0.54 (p&lt;0.001)
+           id="tspan58">R2: 0.54 (p&lt;0.001)
 </tspan></tspan><tspan
          x="282.79492"
-         y="1135.7341"
-         id="tspan37"><tspan
+         y="1135.2704"
+         id="tspan61"><tspan
            style="font-family:Arial;-inkscape-font-specification:Arial"
-           id="tspan36">Number of points with full dataset: 12,077,212,691
+           id="tspan60">Number of points with full dataset: 12,077,212,691
 </tspan></tspan></text><text
        xml:space="preserve"
        transform="scale(0.26458333)"
