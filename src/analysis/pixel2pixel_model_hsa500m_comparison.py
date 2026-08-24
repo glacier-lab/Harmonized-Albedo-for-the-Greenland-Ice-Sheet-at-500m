@@ -93,6 +93,14 @@ def robust_upper_limit(arr: np.ndarray, q: float = 99.0, fallback: float = 0.1) 
     return vmax
 
 
+def print_image_statistics(arr: np.ndarray, image_label: str):
+    vals = arr[np.isfinite(arr)]
+    print(
+        f"{image_label}: mean={np.mean(vals):.6f}, median={np.median(vals):.6f}, "
+        f"min={np.min(vals):.6f}, max={np.max(vals):.6f}, std={np.std(vals):.6f}"
+    )
+
+
 def plot_metric_map(ax, data, transform, crs, cmap, vmin, vmax, cbar_label: str):
     gray_basemap = getattr(ctx.providers, "CartoDB").get("PositronNoLabels")
     show(data, transform=transform, ax=ax, cmap=cmap, vmin=vmin, vmax=vmax)
@@ -165,6 +173,8 @@ axes[1, 2] = fig.add_subplot(gs[1, 3])
 
 # Row 1: HCLIM
 bias_hclim, rmse_hclim, tf_hclim, crs_hclim = read_bias_rmse(HCLIM_MAP_PATH)
+print_image_statistics(bias_hclim, "HCLIM bias")
+print_image_statistics(rmse_hclim, "HCLIM RMSE")
 bias_lim_hclim = robust_symmetric_limit(bias_hclim)
 rmse_lim_hclim = robust_upper_limit(rmse_hclim)
 
@@ -202,6 +212,8 @@ axes[0, 2].text(0.02, 0.08, "c)", transform=axes[0, 2].transAxes, verticalalignm
 
 # Row 2: HIRHAM5
 bias_hirham5, rmse_hirham5, tf_hirham5, crs_hirham5 = read_bias_rmse(HIRHAM5_MAP_PATH)
+print_image_statistics(bias_hirham5, "HIRHAM5 bias")
+print_image_statistics(rmse_hirham5, "HIRHAM5 RMSE")
 bias_lim_hirham5 = robust_symmetric_limit(bias_hirham5)
 rmse_lim_hirham5 = robust_upper_limit(rmse_hirham5)
 
@@ -244,3 +256,9 @@ plt.show()
 fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/model_hsa500m_comparison.png", dpi=300, bbox_inches="tight")
 fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/model_hsa500m_comparison.pdf", dpi=300, bbox_inches="tight")
 # %%
+'''
+HCLIM bias: mean=0.053745, median=0.047010, min=-0.479818, max=0.306183, std=0.028723
+HCLIM RMSE: mean=0.067925, median=0.056767, min=0.048647, max=0.488508, std=0.030182
+HIRHAM5 bias: mean=0.032083, median=0.038944, min=-0.205188, max=0.212650, std=0.027654
+HIRHAM5 RMSE: mean=0.068680, median=0.060413, min=0.048390, max=0.239189, std=0.025649
+'''
