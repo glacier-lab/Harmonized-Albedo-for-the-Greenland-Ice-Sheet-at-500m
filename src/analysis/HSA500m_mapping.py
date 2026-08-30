@@ -155,7 +155,7 @@ for idx_i, row in enumerate(df_imfiles.itertuples(index=False)):
                 cbar.locator = MaxNLocator(integer=True)
                 cbar.update_ticks()
             cbar.set_label("QA Band")
-            axes[idx_i+1].set_title("(j) HSA500m QA Band", y=1.02, pad=4)
+            axes[idx_i+1].set_title("(m) HSA500m QA Band", y=1.02, pad=4)
             axes[idx_i+1].axis("off")
             axes[idx_i+2].axis("off")  # hide the last subplot
             axes[idx_i+3].axis("off")  # hide the last subplot
