@@ -1,5 +1,6 @@
 # Harmonized Satellite Albedo for the Greenland Ice Sheet at 500m (HSA500m)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22300912.svg)](https://doi.org/10.5281/zenodo.22300912)
 
 ## Overview
 
@@ -136,7 +137,7 @@ Unlike other albedo prducts, GCOM-C albedo is derived from surface reflectance p
 2. Splits data into 70% training / 30% test sets
 3. Calculates validation metrics (R², RMSE, MAE, bias)
 4. Creates calibration plots for visual inspection
-5. Produces `calibration_coefficients.csv` with:
+5. Produces [`calibration_coefficients.csv`](stat\calibration_coefficients.csv) with:
    - Scenario IDs (unique sensor combinations)
    - Calibration coefficients (slope, intercept)
    - Validation metrics for both training and test datasets
@@ -155,7 +156,7 @@ Unlike other albedo prducts, GCOM-C albedo is derived from surface reflectance p
 **Input**:
 - Daily CARRA GeoTIFFs (base grid reference)
 - Same-day satellite GeoTIFFs
-- Calibration coefficients (`calibration_coefficients.csv`)
+- Calibration coefficients ([`calibration_coefficients.csv`](stat/calibration_coefficients.csv))
 
 **Process**:
 1. **Collect satellite data**: Gathers same-day files from all available sensors
