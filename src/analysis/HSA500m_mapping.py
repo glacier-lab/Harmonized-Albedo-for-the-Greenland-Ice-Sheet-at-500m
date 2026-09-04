@@ -1,0 +1,422 @@
+"""
+Generate publication-style maps for the HSA500m Greenland albedo product.
+
+This script creates two figure groups:
+1) Harmonization maps comparing source datasets with HSA500m and its QA band.
+2) Trend maps (linear slope, Mann-Kendall tau, Sen's slope) over a dark
+    context basemap for visual interpretation.
+
+Notes:
+- Input/output paths are configured as absolute paths in this file.
+- Trend maps mask non-significant pixels using p-value >= 0.05.
+"""
+#%%
+import pandas as pd
+import numpy as np
+import rasterio as rio
+from rasterio.plot import show
+import matplotlib.pyplot as plt
+import contextily as ctx
+from matplotlib import colors
+from matplotlib.ticker import MaxNLocator
+import seaborn as sns
+from matplotlib_scalebar.scalebar import ScaleBar
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import cmocean as cmo
+import cmcrameri as cmc
+sns.set_theme(font_scale=1.5, style="white")
+
+#%%
+# -----------------------------------------------------------------------------
+# Configuration of harmonization map plotting
+# -----------------------------------------------------------------------------
+impath_hsa = "/data_3/shunan_2/AU/hsa500m/hsa500m_geotiff/hsa500m_gapfilled_20230822.tif"
+impath_gcomc = "/data_3/shunan_2/AU/hsa500m/GCOMC_SR_albedo/GCOMC_SRalbedo_20230822_500m.tif"
+impath_mcd43a3 = "/data_3/shunan_2/AU/hsa500m/MCD43A3_061_bluesky/MCD43A3_BlueskyAlbedo_20230822_500m.tif"
+impath_mod10a1 = "/data_3/shunan_2/AU/hsa500m/MOD10A1_cropped/MOD10A1_2023-08-22.tif"
+impath_myd10a1 = "/data_3/shunan_2/AU/hsa500m/MYD10A1_cropped/MYD10A1_2023-08-22.tif"
+impath_sice = "/data_3/shunan_2/AU/hsa500m/SICE_rebuild/SICE_Albedo_20230822_500m.tif"
+impath_vj143ma3 = "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VJ143MA3/VJ143MA3_BlueskyAlbedo_20230822_500m.tif"
+impath_vnp43a3 = "/data_3/shunan_2/AU/hsa500m/VIIRS_bluesky/VNP43MA3/VNP43MA3_BlueskyAlbedo_20230822_500m.tif"
+impath_carra = "/data_3/shunan_2/AU/hsa500m/CARRA_GL500m_geotiff/CARRA_Albedo_20230822_500m.tif"
+impath_vj109gaSR = "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_mosaics/VJ109GA/VIIRS_SR_VJ109GA_20230822_500m.tif"
+impath_vj209gaSR = "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_mosaics/VJ209GA/VIIRS_SR_VJ209GA_20230822_500m.tif"
+impath_vnp09gaSR = "/data_3/shunan_2/AU/hsa500m/VIIRS_SR_mosaics/VNP09GA/VIIRS_SR_VNP09GA_20230822_500m.tif"
+
+# turn impath into a pd dataframe
+df_imfiles = pd.DataFrame({
+    "dataset": ["MOD10A1", "MYD10A1","VNP09GA_SR", "VJ109GA_SR", "VJ209GA_SR", "SICE", "GCOM-C", "MCD43A3", "VNP43A3", "VJ143MA3", "CARRA", "HSA500m"],
+    "impath": [impath_mod10a1, impath_myd10a1, impath_vnp09gaSR, impath_vj109gaSR, impath_vj209gaSR, impath_sice, impath_gcomc, impath_mcd43a3, impath_vnp43a3, impath_vj143ma3, impath_carra, impath_hsa],
+    "subplot_label": ["(a) MOD10A1", "(b) MYD10A1", "(c) VNP09GA_SR", "(d) VJ109GA_SR", "(e) VJ209GA_SR", "(f) SICE", "(g) GCOM-C", "(h) MCD43A3", "(i) VNP43A3", "(j) VJ143MA3", "(k) CARRA", "(l) HSA500m"]
+})
+
+# Custom color palette  ref: https://gist.github.com/jscarto/6cc7f547bb7d5d9acda51e5c15256b01
+BLUE_FLUORITE = [
+    '#291b32', '#2a1b34', '#2b1b34', '#2d1c36', '#2f1c38', '#301c39', '#301d3a', '#321d3b', '#331d3d', '#351d3f',
+    '#351e40', '#371e41', '#381e43', '#3a1e45', '#3b1f45', '#3c1f46', '#3e1f48', '#3f1f4a', '#401f4c', '#42204d',
+    '#43204e', '#44204f', '#462051', '#472052', '#482054', '#4a2056', '#4a2157', '#4c2158', '#4e215a', '#4f215b',
+    '#50215d', '#52215e', '#532160', '#552162', '#552263', '#562264', '#582265', '#592267', '#5b2268', '#5c226b',
+    '#5e226c', '#5f226e', '#60226f', '#622271', '#632272', '#642274', '#662276', '#672277', '#692278', '#6a227a',
+    '#6c227b', '#6e227d', '#6e237e', '#6f247f', '#702480', '#712581', '#722681', '#732683', '#742783', '#752884',
+    '#762985', '#772987', '#792a87', '#792b88', '#7a2c89', '#7b2c8a', '#7c2d8a', '#7d2d8c', '#7e2e8d', '#7f2f8d',
+    '#80308e', '#813190', '#823191', '#833292', '#843292', '#863393', '#863494', '#873595', '#893596', '#8a3697',
+    '#8b3798', '#8b3899', '#8c389a', '#8e399b', '#8e3a9c', '#8f3b9c', '#8f3d9d', '#8f3e9e', '#903f9e', '#90419e',
+    '#90439f', '#9044a0', '#9046a0', '#9047a1', '#9049a1', '#914aa2', '#914ca2', '#914ca3', '#914ea3', '#9150a4',
+    '#9151a5', '#9153a5', '#9154a6', '#9156a6', '#9157a7', '#9258a7', '#9259a8', '#925aa8', '#925ba9', '#925da9',
+    '#925faa', '#9260ab', '#9260ab', '#9263ac', '#9264ac', '#9265ad', '#9266ae', '#9268ae', '#9269ae', '#926aaf',
+    '#926bb0', '#926cb0', '#926eb1', '#926fb1', '#9270b2', '#9271b2', '#9273b3', '#9274b3', '#9275b4', '#9277b5',
+    '#9277b5', '#9278b6', '#927ab6', '#927bb7', '#927cb7', '#927eb8', '#927fb8', '#9280b9', '#9281ba', '#9282ba',
+    '#9284bb', '#9285bb', '#9285bc', '#9187bc', '#9188bd', '#918abd', '#918bbe', '#918cbf', '#918dbf', '#918ec0',
+    '#918fc0', '#9191c1', '#9092c2', '#9094c2', '#9094c2', '#9095c3', '#9096c3', '#8f99c4', '#8f9ac5', '#8f9ac5',
+    '#8f9bc6', '#8f9cc6', '#8f9dc7', '#8e9fc8', '#8ea0c8', '#8ea2c9', '#8ea3c9', '#8da5ca', '#8da5ca', '#8da6cb',
+    '#8da7cb', '#8ca9cc', '#8caacc', '#8caccd', '#8bacce', '#8badce', '#8baecf', '#8ab0d0', '#8ab2d0', '#8ab2d1',
+    '#8ab4d1', '#89b4d1', '#89b5d2', '#89b7d2', '#88b8d3', '#88bad4', '#87bad4', '#87bbd5', '#86bdd6', '#86bed6',
+    '#86c0d7', '#85c0d7', '#85c1d8', '#84c3d8', '#84c4d9', '#83c5d9', '#83c6da', '#82c8da', '#82c8db', '#81cadc',
+    '#81cbdc', '#80ccdd', '#81cddd', '#84cfdd', '#85cfdd', '#87d0dd', '#8ad0de', '#8dd1de', '#8fd2de', '#90d2de',
+    '#92d4de', '#95d5de', '#97d5de', '#98d6de', '#9bd7de', '#9dd7df', '#a0d8df', '#a1d9df', '#a2dadf', '#a5dadf',
+    '#a7dbdf', '#aadcdf', '#abdddf', '#acdde0', '#afdfe0', '#b1dfe0', '#b3e0e0', '#b4e1e0', '#b7e2e0', '#bae2e1',
+    '#bae3e1', '#bee3e2', '#c0e4e3', '#c1e5e3', '#c4e6e3', '#c6e6e4', '#c8e7e4', '#cbe7e5', '#cde8e5', '#cee9e6',
+    '#d2e9e7', '#d3eae7', '#d5eae7', '#d8ebe8', '#d9ece8', '#dcece9', '#deedea', '#dfeeea', '#e2eeea', '#e5efeb',
+    '#e6f0eb', '#e9f0ec', '#ebf1ed', '#ecf2ed', '#eff3ee', '#f1f3ee'
+]
+albedo_cmap = colors.ListedColormap(BLUE_FLUORITE)
+
+#%%
+# -----------------------------------------------------------------------------
+# Load data and plot
+# -----------------------------------------------------------------------------
+# create a 4x3 subplot to show all 9 datasets and the qa band of HSA500m
+fig, axes = plt.subplots(3, 5, figsize=(17, 16))
+axes = axes.flatten()
+fig.subplots_adjust(left=0.03, right=0.90, top=0.96, bottom=0.04, wspace=0.1, hspace=0.08)
+
+for idx_i, row in enumerate(df_imfiles.itertuples(index=False)):
+    dataset = row.dataset
+    impath = row.impath
+
+    with rio.open(impath) as src:
+        albedo = src.read(1)
+        transform = src.transform
+        crs = src.crs
+
+    show(albedo, transform=transform, ax=axes[idx_i], cmap=albedo_cmap, vmin=0, vmax=1)
+    axes[idx_i].set_title(row.subplot_label, y=1.02, pad=4)
+    axes[idx_i].axis("off")
+
+    if dataset == "HSA500m":
+        # add a scalebar to the HSA500m map
+        scalebar = ScaleBar(
+            dx=1.0,
+            units="m",
+            fixed_value=300,
+            fixed_units="km",
+            location="lower right",
+            frameon=False,
+            color="black",
+        )
+        axes[idx_i].add_artist(scalebar)
+
+        with rio.open(impath) as src:
+            qa_band = src.read(2).astype(np.float32)
+            nodata = src.nodata
+            if nodata is not None:
+                qa_band[qa_band == nodata] = np.nan
+
+            qa_min = float(np.nanmin(qa_band))
+            qa_max = float(np.nanmax(qa_band))
+
+            # Plot QA band using its full native value range (not 0-1 scaling).
+            imqa_ax = show(
+                qa_band,
+                transform=transform,
+                ax=axes[idx_i+1],
+                cmap=getattr(cmo.cm, "thermal"),
+                vmin=qa_min,
+                vmax=qa_max,
+            )
+            imqa = imqa_ax.images[-1]
+            # Put QA colorbar right next to QA map without affecting subplot layout.
+            cax_qa = inset_axes(
+                axes[idx_i+1],
+                width="4%",
+                height="90%",
+                loc="center left",
+                bbox_to_anchor=(1.03, 0.0, 1, 1),
+                bbox_transform=axes[idx_i+1].transAxes,
+                borderpad=0,
+            )
+            cbar = fig.colorbar(imqa, cax=cax_qa, orientation="vertical")
+            qa_min_i = int(np.floor(qa_min))
+            qa_max_i = int(np.ceil(qa_max))
+            if qa_max_i - qa_min_i <= 20:
+                qa_ticks = [float(v) for v in range(qa_min_i, qa_max_i + 1)]
+                cbar.set_ticks(qa_ticks)
+            else:
+                cbar.locator = MaxNLocator(integer=True)
+                cbar.update_ticks()
+            cbar.set_label("QA Band")
+            axes[idx_i+1].set_title("(m) HSA500m QA Band", y=1.02, pad=4)
+            axes[idx_i+1].axis("off")
+            axes[idx_i+2].axis("off")  # hide the last subplot
+            axes[idx_i+3].axis("off")  # hide the last subplot
+
+
+# add colorbar to the right of the figure
+sm = plt.cm.ScalarMappable(cmap=albedo_cmap, norm=colors.Normalize(vmin=0, vmax=1))
+sm.set_array([])
+cbar = fig.colorbar(sm, ax=axes, orientation="vertical", fraction=0.02, pad=0.05)
+cbar.set_label("Albedo")
+fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/harmonization_maps.png", dpi=300, bbox_inches="tight")
+fig.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/harmonization_maps.pdf", dpi=300)
+# %%
+# -----------------------------------------------------------------------------
+# albedo trend mapping
+# -----------------------------------------------------------------------------
+trend_configs = [
+    {
+        "label_prefix": "All months",
+        "subplot_prefix": "(a)",
+        "path": "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_2000_2025.tif",
+        "output_tag": "all_months_2000_2025",
+    },
+    {
+        "label_prefix": "MJJAS",
+        "subplot_prefix": "(b)",
+        "path": "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_MJJAS_2000_2025.tif",
+        "output_tag": "MJJAS_2000_2025",
+    },
+]
+
+
+def load_trend_raster(impath_trend):
+    with rio.open(impath_trend) as src:
+        return {
+            "linear_slope_per_year": src.read(1),
+            "linear_intercept": src.read(2),
+            "linear_pvalue": src.read(3),
+            "mk_tau": src.read(4),
+            "mk_pvalue": src.read(5),
+            "sens_slope_per_year": src.read(6),
+            "transform": src.transform,
+            "crs": src.crs,
+        }
+
+
+def print_trend_stats(trend_name, linear_slope_per_year, mk_tau, sens_slope_per_year):
+    print(f"{trend_name} Linear Slope per Year (p<0.05):")
+    print(f"  Min: {np.nanmin(linear_slope_per_year):.6f}")
+    print(f"  Max: {np.nanmax(linear_slope_per_year):.6f}")
+    print(f"  Mean: {np.nanmean(linear_slope_per_year):.6f}")
+    print(f"  Median: {np.nanmedian(linear_slope_per_year):.6f}")
+    print(f"  Std: {np.nanstd(linear_slope_per_year):.6f}")
+
+    print(f"{trend_name} Mann-Kendall Tau (p<0.05):")
+    print(f"  Min: {np.nanmin(mk_tau):.6f}")
+    print(f"  Max: {np.nanmax(mk_tau):.6f}")
+    print(f"  Mean: {np.nanmean(mk_tau):.6f}")
+    print(f"  Median: {np.nanmedian(mk_tau):.6f}")
+    print(f"  Std: {np.nanstd(mk_tau):.6f}")
+
+    print(f"{trend_name} Sen's Slope per Year (p<0.05):")
+    print(f"  Min: {np.nanmin(sens_slope_per_year):.6f}")
+    print(f"  Max: {np.nanmax(sens_slope_per_year):.6f}")
+    print(f"  Mean: {np.nanmean(sens_slope_per_year):.6f}")
+    print(f"  Median: {np.nanmedian(sens_slope_per_year):.6f}")
+    print(f"  Std: {np.nanstd(sens_slope_per_year):.6f}")
+
+
+def plot_trend_row(fig_trend, axes_row, trend_data, row_label):
+    linear_slope_per_year = trend_data["linear_slope_per_year"]
+    linear_pvalue = trend_data["linear_pvalue"]
+    mk_tau = trend_data["mk_tau"]
+    mk_pvalue = trend_data["mk_pvalue"]
+    sens_slope_per_year = trend_data["sens_slope_per_year"]
+    transform = trend_data["transform"]
+    crs = trend_data["crs"]
+
+    print_trend_stats(row_label, linear_slope_per_year, mk_tau, sens_slope_per_year)
+
+    linear_slope_per_year = linear_slope_per_year.copy()
+    mk_tau = mk_tau.copy()
+    sens_slope_per_year = sens_slope_per_year.copy()
+
+    linear_slope_per_year[linear_pvalue >= 0.05] = np.nan
+    mk_tau[mk_pvalue >= 0.05] = np.nan
+    sens_slope_per_year[mk_pvalue >= 0.05] = np.nan
+
+    gray_basemap = getattr(ctx.providers, "CartoDB").get("PositronNoLabels")
+
+    def add_scalebar(ax):
+        ax.add_artist(
+            ScaleBar(
+                dx=1.0,
+                units="m",
+                fixed_value=300,
+                fixed_units="km",
+                location="lower right",
+                frameon=False,
+                color="black",
+            )
+        )
+
+    show(
+        linear_slope_per_year,
+        transform=transform,
+        ax=axes_row[0],
+        cmap=getattr(cmo.cm, "balance_r"),
+        vmin=trend_limits["linear_slope_per_year"][0],
+        vmax=trend_limits["linear_slope_per_year"][1],
+    )
+    ctx.add_basemap(axes_row[0], crs=crs, source=gray_basemap, attribution=False)
+    show(
+        linear_slope_per_year,
+        transform=transform,
+        ax=axes_row[0],
+        cmap=getattr(cmo.cm, "balance_r"),
+        vmin=trend_limits["linear_slope_per_year"][0],
+        vmax=trend_limits["linear_slope_per_year"][1],
+        alpha=0.88,
+    )
+    sm = plt.cm.ScalarMappable(
+        cmap=getattr(cmo.cm, "balance_r"),
+        norm=colors.Normalize(vmin=trend_limits["linear_slope_per_year"][0], vmax=trend_limits["linear_slope_per_year"][1]),
+    )
+    sm.set_array([])
+    cbar_ls = fig_trend.colorbar(sm, ax=axes_row[0], orientation="vertical", format="%.3f")
+    cbar_ls.set_label(r"Linear Trend $yr^{-1}$ (p<0.05)")
+    add_scalebar(axes_row[0])
+    axes_row[0].axis("off")
+
+    show(
+        mk_tau,
+        transform=transform,
+        ax=axes_row[1],
+        cmap=getattr(cmc.cm, "bam"),
+        vmin=trend_limits["mk_tau"][0],
+        vmax=trend_limits["mk_tau"][1],
+    )
+    ctx.add_basemap(axes_row[1], crs=crs, source=gray_basemap, attribution=False)
+    show(
+        mk_tau,
+        transform=transform,
+        ax=axes_row[1],
+        cmap=getattr(cmc.cm, "bam"),
+        vmin=trend_limits["mk_tau"][0],
+        vmax=trend_limits["mk_tau"][1],
+        alpha=0.88,
+    )
+    sm = plt.cm.ScalarMappable(
+        cmap=getattr(cmc.cm, "bam"),
+        norm=colors.Normalize(vmin=trend_limits["mk_tau"][0], vmax=trend_limits["mk_tau"][1]),
+    )
+    sm.set_array([])
+    cbar_mk = fig_trend.colorbar(sm, ax=axes_row[1], orientation="vertical", format="%.2f")
+    cbar_mk.set_label(r"Mann-Kendall's $\tau$ (p<0.05)")
+    add_scalebar(axes_row[1])
+    axes_row[1].axis("off")
+
+    show(
+        sens_slope_per_year,
+        transform=transform,
+        ax=axes_row[2],
+        cmap=getattr(cmo.cm, "curl_r"),
+        vmin=trend_limits["sens_slope_per_year"][0],
+        vmax=trend_limits["sens_slope_per_year"][1],
+    )
+    ctx.add_basemap(axes_row[2], crs=crs, source=gray_basemap, attribution=False)
+    show(
+        sens_slope_per_year,
+        transform=transform,
+        ax=axes_row[2],
+        cmap=getattr(cmo.cm, "curl_r"),
+        vmin=trend_limits["sens_slope_per_year"][0],
+        vmax=trend_limits["sens_slope_per_year"][1],
+        alpha=0.88,
+    )
+    sm = plt.cm.ScalarMappable(
+        cmap=getattr(cmo.cm, "curl_r"),
+        norm=colors.Normalize(vmin=trend_limits["sens_slope_per_year"][0], vmax=trend_limits["sens_slope_per_year"][1]),
+    )
+    sm.set_array([])
+    cbar_sens = fig_trend.colorbar(sm, ax=axes_row[2], orientation="vertical", format="%.3f")
+    cbar_sens.set_label(r"Sen's Slope $yr^{-1}$ (p<0.05)")
+    add_scalebar(axes_row[2])
+    axes_row[2].axis("off")
+
+    axes_row[0].text(0.02, 0.1, f"{row_label[0]}", transform=axes_row[0].transAxes, va="top", ha="left", color="black")
+    axes_row[1].text(0.02, 0.1, f"{row_label[1]}", transform=axes_row[1].transAxes, va="top", ha="left", color="black")
+    axes_row[2].text(0.02, 0.1, f"{row_label[2]}", transform=axes_row[2].transAxes, va="top", ha="left", color="black")
+
+fig_trend, axes_trend = plt.subplots(2, 3, figsize=(18, 12))
+fig_trend.subplots_adjust(left=0.08, right=0.95, top=0.96, bottom=0.04, hspace=0.10, wspace=0.12)
+
+trend_data_all_months = load_trend_raster(trend_configs[0]["path"])
+trend_data_mjjas = load_trend_raster(trend_configs[1]["path"])
+
+trend_limits = {}
+for key in ["linear_slope_per_year", "mk_tau", "sens_slope_per_year"]:
+    arrays = []
+    for trend_data in [trend_data_all_months, trend_data_mjjas]:
+        arr = trend_data[key].copy()
+        if key == "linear_slope_per_year":
+            arr[trend_data["linear_pvalue"] >= 0.05] = np.nan
+        else:
+            arr[trend_data["mk_pvalue"] >= 0.05] = np.nan
+        arrays.append(arr)
+
+    combined = np.concatenate([arr[np.isfinite(arr)] for arr in arrays if np.any(np.isfinite(arr))])
+    abs_max = float(np.nanmax(np.abs(combined)))
+    trend_limits[key] = (-abs_max, abs_max)
+
+for row_index, trend_data in enumerate([trend_data_all_months, trend_data_mjjas]):
+    if row_index == 0:
+        row_labels = ("(a)", "(b)", "(c)")
+    else:
+        row_labels = ("(d)", "(e)", "(f)")
+    plot_trend_row(fig_trend, axes_trend[row_index], trend_data, row_labels)
+
+# Add row labels at figure level so they remain visible when map axes are off.
+fig_trend.text(0.1, 0.73, "All months", va="center", ha="left", rotation=90)
+fig_trend.text(0.1, 0.27, "May-Sep (MJJAS)", va="center", ha="left", rotation=90)
+
+fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.png", dpi=300, bbox_inches="tight")
+fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.pdf", dpi=300, bbox_inches="tight")
+# %%
+'''
+('(a)', '(b)', '(c)') Linear Slope per Year (p<0.05):
+  Min: -0.007757
+  Max: 0.005362
+  Mean: -0.000208
+  Median: -0.000199
+  Std: 0.000290
+('(a)', '(b)', '(c)') Mann-Kendall Tau (p<0.05):
+  Min: -0.420439
+  Max: 0.231552
+  Mean: -0.047701
+  Median: -0.041498
+  Std: 0.043960
+('(a)', '(b)', '(c)') Sen's Slope per Year (p<0.05):
+  Min: -0.007290
+  Max: 0.005212
+  Mean: -0.000079
+  Median: -0.000045
+  Std: 0.000199
+('(d)', '(e)', '(f)') Linear Slope per Year (p<0.05):
+  Min: -0.010192
+  Max: 0.009826
+  Mean: -0.000295
+  Median: -0.000304
+  Std: 0.000519
+('(d)', '(e)', '(f)') Mann-Kendall Tau (p<0.05):
+  Min: -0.629815
+  Max: 0.446154
+  Mean: -0.071217
+  Median: -0.054025
+  Std: 0.092336
+('(d)', '(e)', '(f)') Sen's Slope per Year (p<0.05):
+  Min: -0.011042
+  Max: 0.011543
+  Mean: -0.000264
+  Median: -0.000250
+  Std: 0.000521
+'''

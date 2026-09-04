@@ -1,0 +1,962 @@
+nohup: ignoring input
+Total scenarios to process: 134
+Plot figures: True
+
+Processing scenario 1/134: daily[mod10]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_001_calibration.png
+  Rows merged: 26612
+  Scenario family: daily
+  Training: N=18628, R²=0.694
+  Test (calibrated): N=7984, R²=0.705
+
+Processing scenario 2/134: daily[myd10]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_002_calibration.png
+  Rows merged: 23247
+  Scenario family: daily
+  Training: N=16272, R²=0.768
+  Test (calibrated): N=6975, R²=0.785
+
+Processing scenario 3/134: daily[sice]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_003_calibration.png
+  Rows merged: 8423
+  Scenario family: daily
+  Training: N=5896, R²=0.643
+  Test (calibrated): N=2527, R²=0.639
+
+Processing scenario 4/134: daily[gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_004_calibration.png
+  Rows merged: 7432
+  Scenario family: daily
+  Training: N=5202, R²=0.822
+  Test (calibrated): N=2230, R²=0.796
+
+Processing scenario 5/134: daily[viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_005_calibration.png
+  Rows merged: 9421
+  Scenario family: daily
+  Training: N=6594, R²=0.757
+  Test (calibrated): N=2827, R²=0.754
+
+Processing scenario 6/134: daily[viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_006_calibration.png
+  Rows merged: 5042
+  Scenario family: daily
+  Training: N=3529, R²=0.738
+  Test (calibrated): N=1513, R²=0.731
+
+Processing scenario 7/134: daily[viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_007_calibration.png
+  Rows merged: 2081
+  Scenario family: daily
+  Training: N=1456, R²=0.703
+  Test (calibrated): N=625, R²=0.766
+
+Processing scenario 8/134: daily[mod10+myd10]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_008_calibration.png
+  Rows merged: 29013
+  Scenario family: daily
+  Training: N=20309, R²=0.709
+  Test (calibrated): N=8704, R²=0.727
+
+Processing scenario 9/134: daily[mod10+sice]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_009_calibration.png
+  Rows merged: 27579
+  Scenario family: daily
+  Training: N=19305, R²=0.687
+  Test (calibrated): N=8274, R²=0.683
+
+Processing scenario 10/134: daily[mod10+gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_010_calibration.png
+  Rows merged: 27612
+  Scenario family: daily
+  Training: N=19328, R²=0.710
+  Test (calibrated): N=8284, R²=0.694
+
+Processing scenario 11/134: daily[mod10+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_011_calibration.png
+  Rows merged: 27408
+  Scenario family: daily
+  Training: N=19185, R²=0.709
+  Test (calibrated): N=8223, R²=0.713
+
+Processing scenario 12/134: daily[mod10+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_012_calibration.png
+  Rows merged: 27089
+  Scenario family: daily
+  Training: N=18962, R²=0.711
+  Test (calibrated): N=8127, R²=0.690
+
+Processing scenario 13/134: daily[mod10+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_013_calibration.png
+  Rows merged: 26830
+  Scenario family: daily
+  Training: N=18781, R²=0.693
+  Test (calibrated): N=8049, R²=0.715
+
+Processing scenario 14/134: daily[myd10+sice]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_014_calibration.png
+  Rows merged: 24793
+  Scenario family: daily
+  Training: N=17355, R²=0.754
+  Test (calibrated): N=7438, R²=0.752
+
+Processing scenario 15/134: daily[myd10+gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_015_calibration.png
+  Rows merged: 24681
+  Scenario family: daily
+  Training: N=17276, R²=0.781
+  Test (calibrated): N=7405, R²=0.779
+
+Processing scenario 16/134: daily[myd10+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_016_calibration.png
+  Rows merged: 24225
+  Scenario family: daily
+  Training: N=16957, R²=0.776
+  Test (calibrated): N=7268, R²=0.782
+
+Processing scenario 17/134: daily[myd10+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_017_calibration.png
+  Rows merged: 23885
+  Scenario family: daily
+  Training: N=16719, R²=0.778
+  Test (calibrated): N=7166, R²=0.775
+
+Processing scenario 18/134: daily[myd10+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_018_calibration.png
+  Rows merged: 23524
+  Scenario family: daily
+  Training: N=16466, R²=0.777
+  Test (calibrated): N=7058, R²=0.769
+
+Processing scenario 19/134: daily[sice+gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_019_calibration.png
+  Rows merged: 11685
+  Scenario family: daily
+  Training: N=8179, R²=0.753
+  Test (calibrated): N=3506, R²=0.725
+
+Processing scenario 20/134: daily[sice+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_020_calibration.png
+  Rows merged: 14131
+  Scenario family: daily
+  Training: N=9891, R²=0.733
+  Test (calibrated): N=4240, R²=0.736
+
+Processing scenario 21/134: daily[sice+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_021_calibration.png
+  Rows merged: 10265
+  Scenario family: daily
+  Training: N=7185, R²=0.710
+  Test (calibrated): N=3080, R²=0.710
+
+Processing scenario 22/134: daily[sice+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_022_calibration.png
+  Rows merged: 9258
+  Scenario family: daily
+  Training: N=6480, R²=0.667
+  Test (calibrated): N=2778, R²=0.704
+
+Processing scenario 23/134: daily[gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_023_calibration.png
+  Rows merged: 13567
+  Scenario family: daily
+  Training: N=9496, R²=0.793
+  Test (calibrated): N=4071, R²=0.820
+
+Processing scenario 24/134: daily[gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_024_calibration.png
+  Rows merged: 9228
+  Scenario family: daily
+  Training: N=6459, R²=0.794
+  Test (calibrated): N=2769, R²=0.822
+
+Processing scenario 25/134: daily[gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_025_calibration.png
+  Rows merged: 8164
+  Scenario family: daily
+  Training: N=5714, R²=0.805
+  Test (calibrated): N=2450, R²=0.809
+
+Processing scenario 26/134: daily[viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_026_calibration.png
+  Rows merged: 10875
+  Scenario family: daily
+  Training: N=7612, R²=0.763
+  Test (calibrated): N=3263, R²=0.763
+
+Processing scenario 27/134: daily[viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_027_calibration.png
+  Rows merged: 10018
+  Scenario family: daily
+  Training: N=7012, R²=0.767
+  Test (calibrated): N=3006, R²=0.743
+
+Processing scenario 28/134: daily[viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_028_calibration.png
+  Rows merged: 5672
+  Scenario family: daily
+  Training: N=3970, R²=0.755
+  Test (calibrated): N=1702, R²=0.721
+
+Processing scenario 29/134: daily[mod10+myd10+sice]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_029_calibration.png
+  Rows merged: 29552
+  Scenario family: daily
+  Training: N=20686, R²=0.705
+  Test (calibrated): N=8866, R²=0.708
+
+Processing scenario 30/134: daily[mod10+myd10+gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_030_calibration.png
+  Rows merged: 29632
+  Scenario family: daily
+  Training: N=20742, R²=0.713
+  Test (calibrated): N=8890, R²=0.731
+
+Processing scenario 31/134: daily[mod10+myd10+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_031_calibration.png
+  Rows merged: 29359
+  Scenario family: daily
+  Training: N=20551, R²=0.718
+  Test (calibrated): N=8808, R²=0.722
+
+Processing scenario 32/134: daily[mod10+myd10+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_032_calibration.png
+  Rows merged: 29222
+  Scenario family: daily
+  Training: N=20455, R²=0.715
+  Test (calibrated): N=8767, R²=0.723
+
+Processing scenario 33/134: daily[mod10+myd10+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_033_calibration.png
+  Rows merged: 29102
+  Scenario family: daily
+  Training: N=20371, R²=0.712
+  Test (calibrated): N=8731, R²=0.723
+
+Processing scenario 34/134: daily[mod10+sice+gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_034_calibration.png
+  Rows merged: 28250
+  Scenario family: daily
+  Training: N=19775, R²=0.692
+  Test (calibrated): N=8475, R²=0.712
+
+Processing scenario 35/134: daily[mod10+sice+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_035_calibration.png
+  Rows merged: 28184
+  Scenario family: daily
+  Training: N=19728, R²=0.700
+  Test (calibrated): N=8456, R²=0.696
+
+Processing scenario 36/134: daily[mod10+sice+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_036_calibration.png
+  Rows merged: 27881
+  Scenario family: daily
+  Training: N=19516, R²=0.691
+  Test (calibrated): N=8365, R²=0.699
+
+Processing scenario 37/134: daily[mod10+sice+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_037_calibration.png
+  Rows merged: 27722
+  Scenario family: daily
+  Training: N=19405, R²=0.684
+  Test (calibrated): N=8317, R²=0.700
+
+Processing scenario 38/134: daily[mod10+gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_038_calibration.png
+  Rows merged: 28248
+  Scenario family: daily
+  Training: N=19773, R²=0.713
+  Test (calibrated): N=8475, R²=0.721
+
+Processing scenario 39/134: daily[mod10+gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_039_calibration.png
+  Rows merged: 27940
+  Scenario family: daily
+  Training: N=19558, R²=0.712
+  Test (calibrated): N=8382, R²=0.703
+
+Processing scenario 40/134: daily[mod10+gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_040_calibration.png
+  Rows merged: 27749
+  Scenario family: daily
+  Training: N=19424, R²=0.709
+  Test (calibrated): N=8325, R²=0.698
+
+Processing scenario 41/134: daily[mod10+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_041_calibration.png
+  Rows merged: 27666
+  Scenario family: daily
+  Training: N=19366, R²=0.711
+  Test (calibrated): N=8300, R²=0.717
+
+Processing scenario 42/134: daily[mod10+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_042_calibration.png
+  Rows merged: 27526
+  Scenario family: daily
+  Training: N=19268, R²=0.705
+  Test (calibrated): N=8258, R²=0.725
+
+Processing scenario 43/134: daily[mod10+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_043_calibration.png
+  Rows merged: 27208
+  Scenario family: daily
+  Training: N=19045, R²=0.713
+  Test (calibrated): N=8163, R²=0.686
+
+Processing scenario 44/134: daily[myd10+sice+gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_044_calibration.png
+  Rows merged: 25653
+  Scenario family: daily
+  Training: N=17957, R²=0.763
+  Test (calibrated): N=7696, R²=0.776
+
+Processing scenario 45/134: daily[myd10+sice+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_045_calibration.png
+  Rows merged: 25444
+  Scenario family: daily
+  Training: N=17810, R²=0.760
+  Test (calibrated): N=7634, R²=0.763
+
+Processing scenario 46/134: daily[myd10+sice+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_046_calibration.png
+  Rows merged: 25107
+  Scenario family: daily
+  Training: N=17574, R²=0.760
+  Test (calibrated): N=7533, R²=0.760
+
+Processing scenario 47/134: daily[myd10+sice+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_047_calibration.png
+  Rows merged: 24960
+  Scenario family: daily
+  Training: N=17472, R²=0.752
+  Test (calibrated): N=7488, R²=0.766
+
+Processing scenario 48/134: daily[myd10+gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_048_calibration.png
+  Rows merged: 25364
+  Scenario family: daily
+  Training: N=17754, R²=0.783
+  Test (calibrated): N=7610, R²=0.790
+
+Processing scenario 49/134: daily[myd10+gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_049_calibration.png
+  Rows merged: 25045
+  Scenario family: daily
+  Training: N=17531, R²=0.780
+  Test (calibrated): N=7514, R²=0.789
+
+Processing scenario 50/134: daily[myd10+gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_050_calibration.png
+  Rows merged: 24837
+  Scenario family: daily
+  Training: N=17385, R²=0.784
+  Test (calibrated): N=7452, R²=0.775
+
+Processing scenario 51/134: daily[myd10+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_051_calibration.png
+  Rows merged: 24571
+  Scenario family: daily
+  Training: N=17199, R²=0.779
+  Test (calibrated): N=7372, R²=0.780
+
+Processing scenario 52/134: daily[myd10+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_052_calibration.png
+  Rows merged: 24379
+  Scenario family: daily
+  Training: N=17065, R²=0.780
+  Test (calibrated): N=7314, R²=0.774
+
+Processing scenario 53/134: daily[myd10+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_053_calibration.png
+  Rows merged: 24033
+  Scenario family: daily
+  Training: N=16823, R²=0.775
+  Test (calibrated): N=7210, R²=0.782
+
+Processing scenario 54/134: daily[sice+gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_054_calibration.png
+  Rows merged: 16184
+  Scenario family: daily
+  Training: N=11328, R²=0.774
+  Test (calibrated): N=4856, R²=0.775
+
+Processing scenario 55/134: daily[sice+gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_055_calibration.png
+  Rows merged: 12351
+  Scenario family: daily
+  Training: N=8645, R²=0.761
+  Test (calibrated): N=3706, R²=0.770
+
+Processing scenario 56/134: daily[sice+gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_056_calibration.png
+  Rows merged: 11993
+  Scenario family: daily
+  Training: N=8395, R²=0.744
+  Test (calibrated): N=3598, R²=0.772
+
+Processing scenario 57/134: daily[sice+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_057_calibration.png
+  Rows merged: 14736
+  Scenario family: daily
+  Training: N=10315, R²=0.757
+  Test (calibrated): N=4421, R²=0.728
+
+Processing scenario 58/134: daily[sice+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_058_calibration.png
+  Rows merged: 14395
+  Scenario family: daily
+  Training: N=10076, R²=0.743
+  Test (calibrated): N=4319, R²=0.737
+
+Processing scenario 59/134: daily[sice+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_059_calibration.png
+  Rows merged: 10540
+  Scenario family: daily
+  Training: N=7378, R²=0.728
+  Test (calibrated): N=3162, R²=0.695
+
+Processing scenario 60/134: daily[gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_060_calibration.png
+  Rows merged: 14280
+  Scenario family: daily
+  Training: N=9996, R²=0.804
+  Test (calibrated): N=4284, R²=0.795
+
+Processing scenario 61/134: daily[gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_061_calibration.png
+  Rows merged: 13860
+  Scenario family: daily
+  Training: N=9702, R²=0.788
+  Test (calibrated): N=4158, R²=0.833
+
+Processing scenario 62/134: daily[gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_062_calibration.png
+  Rows merged: 9521
+  Scenario family: daily
+  Training: N=6664, R²=0.802
+  Test (calibrated): N=2857, R²=0.807
+
+Processing scenario 63/134: daily[viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_063_calibration.png
+  Rows merged: 11222
+  Scenario family: daily
+  Training: N=7855, R²=0.764
+  Test (calibrated): N=3367, R²=0.766
+
+Processing scenario 64/134: daily[mod10+myd10+sice+gcomc]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_064_calibration.png
+  Rows merged: 30012
+  Scenario family: daily
+  Training: N=21008, R²=0.711
+  Test (calibrated): N=9004, R²=0.714
+
+Processing scenario 65/134: daily[mod10+myd10+sice+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_065_calibration.png
+  Rows merged: 29835
+  Scenario family: daily
+  Training: N=20884, R²=0.709
+  Test (calibrated): N=8951, R²=0.715
+
+Processing scenario 66/134: daily[mod10+myd10+sice+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_066_calibration.png
+  Rows merged: 29704
+  Scenario family: daily
+  Training: N=20792, R²=0.713
+  Test (calibrated): N=8912, R²=0.703
+
+Processing scenario 67/134: daily[mod10+myd10+sice+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_067_calibration.png
+  Rows merged: 29620
+  Scenario family: daily
+  Training: N=20734, R²=0.706
+  Test (calibrated): N=8886, R²=0.711
+
+Processing scenario 68/134: daily[mod10+myd10+gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_068_calibration.png
+  Rows merged: 29914
+  Scenario family: daily
+  Training: N=20939, R²=0.721
+  Test (calibrated): N=8975, R²=0.726
+
+Processing scenario 69/134: daily[mod10+myd10+gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_069_calibration.png
+  Rows merged: 29793
+  Scenario family: daily
+  Training: N=20855, R²=0.729
+  Test (calibrated): N=8938, R²=0.702
+
+Processing scenario 70/134: daily[mod10+myd10+gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_070_calibration.png
+  Rows merged: 29692
+  Scenario family: daily
+  Training: N=20784, R²=0.721
+  Test (calibrated): N=8908, R²=0.716
+
+Processing scenario 71/134: daily[mod10+myd10+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_071_calibration.png
+  Rows merged: 29501
+  Scenario family: daily
+  Training: N=20650, R²=0.721
+  Test (calibrated): N=8851, R²=0.720
+
+Processing scenario 72/134: daily[mod10+myd10+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_072_calibration.png
+  Rows merged: 29419
+  Scenario family: daily
+  Training: N=20593, R²=0.719
+  Test (calibrated): N=8826, R²=0.722
+
+Processing scenario 73/134: daily[mod10+myd10+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_073_calibration.png
+  Rows merged: 29284
+  Scenario family: daily
+  Training: N=20498, R²=0.711
+  Test (calibrated): N=8786, R²=0.735
+
+Processing scenario 74/134: daily[mod10+sice+gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_074_calibration.png
+  Rows merged: 28773
+  Scenario family: daily
+  Training: N=20141, R²=0.707
+  Test (calibrated): N=8632, R²=0.708
+
+Processing scenario 75/134: daily[mod10+sice+gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_075_calibration.png
+  Rows merged: 28480
+  Scenario family: daily
+  Training: N=19936, R²=0.695
+  Test (calibrated): N=8544, R²=0.714
+
+Processing scenario 76/134: daily[mod10+sice+gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_076_calibration.png
+  Rows merged: 28358
+  Scenario family: daily
+  Training: N=19850, R²=0.707
+  Test (calibrated): N=8508, R²=0.680
+
+Processing scenario 77/134: daily[mod10+sice+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_077_calibration.png
+  Rows merged: 28368
+  Scenario family: daily
+  Training: N=19857, R²=0.701
+  Test (calibrated): N=8511, R²=0.705
+
+Processing scenario 78/134: daily[mod10+sice+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_078_calibration.png
+  Rows merged: 28264
+  Scenario family: daily
+  Training: N=19784, R²=0.699
+  Test (calibrated): N=8480, R²=0.705
+
+Processing scenario 79/134: daily[mod10+sice+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_079_calibration.png
+  Rows merged: 27966
+  Scenario family: daily
+  Training: N=19576, R²=0.699
+  Test (calibrated): N=8390, R²=0.684
+
+Processing scenario 80/134: daily[mod10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_080_calibration.png
+  Rows merged: 28439
+  Scenario family: daily
+  Training: N=19907, R²=0.718
+  Test (calibrated): N=8532, R²=0.716
+
+Processing scenario 81/134: daily[mod10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_081_calibration.png
+  Rows merged: 28321
+  Scenario family: daily
+  Training: N=19824, R²=0.725
+  Test (calibrated): N=8497, R²=0.695
+
+Processing scenario 82/134: daily[mod10+gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_082_calibration.png
+  Rows merged: 28017
+  Scenario family: daily
+  Training: N=19611, R²=0.704
+  Test (calibrated): N=8406, R²=0.722
+
+Processing scenario 83/134: daily[mod10+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_083_calibration.png
+  Rows merged: 27754
+  Scenario family: daily
+  Training: N=19427, R²=0.711
+  Test (calibrated): N=8327, R²=0.719
+
+Processing scenario 84/134: daily[myd10+sice+gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_084_calibration.png
+  Rows merged: 26185
+  Scenario family: daily
+  Training: N=18329, R²=0.774
+  Test (calibrated): N=7856, R²=0.768
+
+Processing scenario 85/134: daily[myd10+sice+gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_085_calibration.png
+  Rows merged: 25867
+  Scenario family: daily
+  Training: N=18106, R²=0.766
+  Test (calibrated): N=7761, R²=0.781
+
+Processing scenario 86/134: daily[myd10+sice+gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_086_calibration.png
+  Rows merged: 25758
+  Scenario family: daily
+  Training: N=18030, R²=0.771
+  Test (calibrated): N=7728, R²=0.761
+
+Processing scenario 87/134: daily[myd10+sice+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_087_calibration.png
+  Rows merged: 25646
+  Scenario family: daily
+  Training: N=17952, R²=0.768
+  Test (calibrated): N=7694, R²=0.759
+
+Processing scenario 88/134: daily[myd10+sice+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_088_calibration.png
+  Rows merged: 25546
+  Scenario family: daily
+  Training: N=17882, R²=0.762
+  Test (calibrated): N=7664, R²=0.764
+
+Processing scenario 89/134: daily[myd10+sice+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_089_calibration.png
+  Rows merged: 25211
+  Scenario family: daily
+  Training: N=17647, R²=0.763
+  Test (calibrated): N=7564, R²=0.757
+
+Processing scenario 90/134: daily[myd10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_090_calibration.png
+  Rows merged: 25607
+  Scenario family: daily
+  Training: N=17924, R²=0.788
+  Test (calibrated): N=7683, R²=0.779
+
+Processing scenario 91/134: daily[myd10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_091_calibration.png
+  Rows merged: 25461
+  Scenario family: daily
+  Training: N=17822, R²=0.786
+  Test (calibrated): N=7639, R²=0.782
+
+Processing scenario 92/134: daily[myd10+gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_092_calibration.png
+  Rows merged: 25134
+  Scenario family: daily
+  Training: N=17593, R²=0.781
+  Test (calibrated): N=7541, R²=0.786
+
+Processing scenario 93/134: daily[myd10+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_093_calibration.png
+  Rows merged: 24674
+  Scenario family: daily
+  Training: N=17271, R²=0.780
+  Test (calibrated): N=7403, R²=0.776
+
+Processing scenario 94/134: daily[sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_094_calibration.png
+  Rows merged: 16537
+  Scenario family: daily
+  Training: N=11575, R²=0.778
+  Test (calibrated): N=4962, R²=0.786
+
+Processing scenario 95/134: daily[sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_095_calibration.png
+  Rows merged: 16346
+  Scenario family: daily
+  Training: N=11442, R²=0.773
+  Test (calibrated): N=4904, R²=0.786
+
+Processing scenario 96/134: daily[sice+gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_096_calibration.png
+  Rows merged: 12506
+  Scenario family: daily
+  Training: N=8754, R²=0.769
+  Test (calibrated): N=3752, R²=0.763
+
+Processing scenario 97/134: daily[sice+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_097_calibration.png
+  Rows merged: 14911
+  Scenario family: daily
+  Training: N=10437, R²=0.757
+  Test (calibrated): N=4474, R²=0.738
+
+Processing scenario 98/134: daily[gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_098_calibration.png
+  Rows merged: 14471
+  Scenario family: daily
+  Training: N=10129, R²=0.792
+  Test (calibrated): N=4342, R²=0.824
+
+Processing scenario 99/134: daily[mod10+myd10+sice+gcomc+viirs_sr_vnp09ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_099_calibration.png
+  Rows merged: 30259
+  Scenario family: daily
+  Training: N=21181, R²=0.715
+  Test (calibrated): N=9078, R²=0.718
+
+Processing scenario 100/134: daily[mod10+myd10+sice+gcomc+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_100_calibration.png
+  Rows merged: 30139
+  Scenario family: daily
+  Training: N=21097, R²=0.716
+  Test (calibrated): N=9042, R²=0.710
+
+Processing scenario 101/134: daily[mod10+myd10+sice+gcomc+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_101_calibration.png
+  Rows merged: 30066
+  Scenario family: daily
+  Training: N=21046, R²=0.713
+  Test (calibrated): N=9020, R²=0.714
+
+Processing scenario 102/134: daily[mod10+myd10+sice+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_102_calibration.png
+  Rows merged: 29948
+  Scenario family: daily
+  Training: N=20963, R²=0.717
+  Test (calibrated): N=8985, R²=0.706
+
+Processing scenario 103/134: daily[mod10+myd10+sice+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_103_calibration.png
+  Rows merged: 29881
+  Scenario family: daily
+  Training: N=20916, R²=0.710
+  Test (calibrated): N=8965, R²=0.717
+
+Processing scenario 104/134: daily[mod10+myd10+sice+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_104_calibration.png
+  Rows merged: 29752
+  Scenario family: daily
+  Training: N=20826, R²=0.715
+  Test (calibrated): N=8926, R²=0.700
+
+Processing scenario 105/134: daily[mod10+myd10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_105_calibration.png
+  Rows merged: 30031
+  Scenario family: daily
+  Training: N=21021, R²=0.725
+  Test (calibrated): N=9010, R²=0.723
+
+Processing scenario 106/134: daily[mod10+myd10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_106_calibration.png
+  Rows merged: 29954
+  Scenario family: daily
+  Training: N=20967, R²=0.719
+  Test (calibrated): N=8987, R²=0.732
+
+Processing scenario 107/134: daily[mod10+myd10+gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_107_calibration.png
+  Rows merged: 29832
+  Scenario family: daily
+  Training: N=20882, R²=0.719
+  Test (calibrated): N=8950, R²=0.726
+
+Processing scenario 108/134: daily[mod10+myd10+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_108_calibration.png
+  Rows merged: 29552
+  Scenario family: daily
+  Training: N=20686, R²=0.723
+  Test (calibrated): N=8866, R²=0.717
+
+Processing scenario 109/134: daily[mod10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_109_calibration.png
+  Rows merged: 28921
+  Scenario family: daily
+  Training: N=20244, R²=0.713
+  Test (calibrated): N=8677, R²=0.701
+
+Processing scenario 110/134: daily[mod10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_110_calibration.png
+  Rows merged: 28835
+  Scenario family: daily
+  Training: N=20184, R²=0.707
+  Test (calibrated): N=8651, R²=0.710
+
+Processing scenario 111/134: daily[mod10+sice+gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_111_calibration.png
+  Rows merged: 28546
+  Scenario family: daily
+  Training: N=19982, R²=0.705
+  Test (calibrated): N=8564, R²=0.693
+
+Processing scenario 112/134: daily[mod10+sice+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_112_calibration.png
+  Rows merged: 28429
+  Scenario family: daily
+  Training: N=19900, R²=0.704
+  Test (calibrated): N=8529, R²=0.701
+
+Processing scenario 113/134: daily[mod10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_113_calibration.png
+  Rows merged: 28497
+  Scenario family: daily
+  Training: N=19947, R²=0.715
+  Test (calibrated): N=8550, R²=0.723
+
+Processing scenario 114/134: daily[myd10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_114_calibration.png
+  Rows merged: 26343
+  Scenario family: daily
+  Training: N=18440, R²=0.773
+  Test (calibrated): N=7903, R²=0.777
+
+Processing scenario 115/134: daily[myd10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_115_calibration.png
+  Rows merged: 26254
+  Scenario family: daily
+  Training: N=18377, R²=0.769
+  Test (calibrated): N=7877, R²=0.782
+
+Processing scenario 116/134: daily[myd10+sice+gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_116_calibration.png
+  Rows merged: 25936
+  Scenario family: daily
+  Training: N=18155, R²=0.766
+  Test (calibrated): N=7781, R²=0.784
+
+Processing scenario 117/134: daily[myd10+sice+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_117_calibration.png
+  Rows merged: 25724
+  Scenario family: daily
+  Training: N=18006, R²=0.765
+  Test (calibrated): N=7718, R²=0.766
+
+Processing scenario 118/134: daily[myd10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_118_calibration.png
+  Rows merged: 25674
+  Scenario family: daily
+  Training: N=17971, R²=0.786
+  Test (calibrated): N=7703, R²=0.784
+
+Processing scenario 119/134: daily[sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_119_calibration.png
+  Rows merged: 16651
+  Scenario family: daily
+  Training: N=11655, R²=0.779
+  Test (calibrated): N=4996, R²=0.789
+
+Processing scenario 120/134: daily[mod10+myd10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_120_calibration.png
+  Rows merged: 30357
+  Scenario family: daily
+  Training: N=21249, R²=0.715
+  Test (calibrated): N=9108, R²=0.724
+
+Processing scenario 121/134: daily[mod10+myd10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_121_calibration.png
+  Rows merged: 30296
+  Scenario family: daily
+  Training: N=21207, R²=0.721
+  Test (calibrated): N=9089, R²=0.707
+
+Processing scenario 122/134: daily[mod10+myd10+sice+gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_122_calibration.png
+  Rows merged: 30175
+  Scenario family: daily
+  Training: N=21122, R²=0.716
+  Test (calibrated): N=9053, R²=0.712
+
+Processing scenario 123/134: daily[mod10+myd10+sice+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_123_calibration.png
+  Rows merged: 29986
+  Scenario family: daily
+  Training: N=20990, R²=0.712
+  Test (calibrated): N=8996, R²=0.718
+
+Processing scenario 124/134: daily[mod10+myd10+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_124_calibration.png
+  Rows merged: 30065
+  Scenario family: daily
+  Training: N=21045, R²=0.721
+  Test (calibrated): N=9020, R²=0.731
+
+Processing scenario 125/134: daily[mod10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_125_calibration.png
+  Rows merged: 28971
+  Scenario family: daily
+  Training: N=20279, R²=0.717
+  Test (calibrated): N=8692, R²=0.692
+
+Processing scenario 126/134: daily[myd10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_126_calibration.png
+  Rows merged: 26399
+  Scenario family: daily
+  Training: N=18479, R²=0.774
+  Test (calibrated): N=7920, R²=0.776
+
+Processing scenario 127/134: daily[mod10+myd10+sice+gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_127_calibration.png
+  Rows merged: 30388
+  Scenario family: daily
+  Training: N=21271, R²=0.719
+  Test (calibrated): N=9117, R²=0.717
+
+Processing scenario 128/134: 16day[mcd43a3_bluesky]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_128_calibration.png
+  Rows merged: 39480
+  Scenario family: 16day
+  Training: N=27636, R²=0.795
+  Test (calibrated): N=11844, R²=0.790
+
+Processing scenario 129/134: 16day[viirs_vj143ma3_bluesky]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_129_calibration.png
+  Rows merged: 17493
+  Scenario family: 16day
+  Training: N=12245, R²=0.774
+  Test (calibrated): N=5248, R²=0.763
+
+Processing scenario 130/134: 16day[viirs_vnp43ma3_bluesky]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_130_calibration.png
+  Rows merged: 30404
+  Scenario family: 16day
+  Training: N=21282, R²=0.779
+  Test (calibrated): N=9122, R²=0.789
+
+Processing scenario 131/134: 16day[mcd43a3_bluesky+viirs_vj143ma3_bluesky]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_131_calibration.png
+  Rows merged: 40123
+  Scenario family: 16day
+  Training: N=28086, R²=0.788
+  Test (calibrated): N=12037, R²=0.791
+
+Processing scenario 132/134: 16day[mcd43a3_bluesky+viirs_vnp43ma3_bluesky]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_132_calibration.png
+  Rows merged: 40610
+  Scenario family: 16day
+  Training: N=28427, R²=0.790
+  Test (calibrated): N=12183, R²=0.779
+
+Processing scenario 133/134: 16day[viirs_vj143ma3_bluesky+viirs_vnp43ma3_bluesky]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_133_calibration.png
+  Rows merged: 32346
+  Scenario family: 16day
+  Training: N=22642, R²=0.779
+  Test (calibrated): N=9704, R²=0.784
+
+Processing scenario 134/134: 16day[mcd43a3_bluesky+viirs_vj143ma3_bluesky+viirs_vnp43ma3_bluesky]
+  Figure saved to: /data_3/shunan_2/AU/hsa500m/calibration/print/scenario_134_calibration.png
+  Rows merged: 40810
+  Scenario family: 16day
+  Training: N=28567, R²=0.787
+  Test (calibrated): N=12243, R²=0.782
+
+================================================================================
+Calibration coefficient calculation completed!
+Total scenarios processed: 134
+
+Top 10 performing scenarios (by test R²):
+ scenario_id                                                        scenario  train_r_squared  test_calib_r_squared  train_slope  train_intercept  test_calib_slope  test_calib_intercept
+          61                  daily[gcomc+viirs_sr_vnp09ga+viirs_sr_vj209ga]         0.788213              0.832510     1.000490        -0.000563          1.017660             -0.010562
+          98 daily[gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga+viirs_sr_vj209ga]         0.791758              0.824206     1.005752        -0.004087          1.013545             -0.009465
+          24                                   daily[gcomc+viirs_sr_vj109ga]         0.793736              0.821909     1.005775        -0.004908          0.997299              0.002725
+          23                                   daily[gcomc+viirs_sr_vnp09ga]         0.792650              0.820158     1.003569        -0.003023          1.004349             -0.001326
+          25                                   daily[gcomc+viirs_sr_vj209ga]         0.804975              0.809323     1.002621        -0.001176          0.996369              0.004010
+          62                  daily[gcomc+viirs_sr_vj109ga+viirs_sr_vj209ga]         0.801702              0.807148     1.008222        -0.004967          0.997020             -0.000396
+           4                                                    daily[gcomc]         0.821736              0.795716     1.000041        -0.000024          0.994130              0.005620
+          60                  daily[gcomc+viirs_sr_vnp09ga+viirs_sr_vj109ga]         0.803637              0.795129     1.011625        -0.008662          0.990434              0.007530
+         131                   16day[mcd43a3_bluesky+viirs_vj143ma3_bluesky]         0.788142              0.790870     1.039019         0.000477          0.996871              0.002077
+         128                                          16day[mcd43a3_bluesky]         0.794576              0.789880     1.024280         0.007398          0.993606              0.004489
+
+Detailed results saved to: /data_3/shunan_2/AU/hsa500m/calibration/calibration_coefficients.csv
+
+Figures saved to: /data_3/shunan_2/AU/hsa500m/calibration/print
