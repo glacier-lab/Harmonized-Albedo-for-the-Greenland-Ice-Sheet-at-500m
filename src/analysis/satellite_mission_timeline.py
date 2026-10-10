@@ -35,7 +35,7 @@ missions = {
 
     "Sentinel 3": ("2017-04-01", "2025-12-31", "SICE3.0(500m)"),
 
-    "GCOM-C SGLI": ("2018-01-01", "2025-12-31", "GOMC-C_L2_RSRF Ver.3(250m)"),
+    "GCOM-C SGLI": ("2018-01-01", "2025-12-31", "GCOM-C_L2_RSRF Ver.3(250m)"),
 
     "CARRA": ("2000-01-01", "2025-12-31", "CARRA1(2.5km)"),
 }
@@ -79,6 +79,6 @@ ax_right.set_yticklabels(df["Version"])
 ax.set_xlim(pd.to_datetime("1999-01-01"), pd.to_datetime("2027-01-01"))
 
 plt.tight_layout()
-plt.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/satellite_mission_timelines.pdf", bbox_inches="tight", dpi=300)
-plt.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/satellite_mission_timelines.png", bbox_inches="tight", dpi=300)
+plt.savefig(r"C:\Users\au686295\GitHub\postdoc\Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m\print\satellite_mission_timelines.pdf", bbox_inches="tight", dpi=300)
+plt.savefig(r"C:\Users\au686295\GitHub\postdoc\Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m\print\satellite_mission_timelines.png", bbox_inches="tight", dpi=300)
 # %%
