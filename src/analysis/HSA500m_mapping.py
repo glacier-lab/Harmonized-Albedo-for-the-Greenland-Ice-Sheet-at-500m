@@ -258,7 +258,7 @@ def plot_trend_row(fig_trend, axes_row, trend_data, row_label):
                 color="black",
             )
         )
-
+#%%
     show(
         linear_slope_per_year,
         transform=transform,
@@ -381,6 +381,68 @@ fig_trend.text(0.1, 0.27, "May-Sep (MJJAS)", va="center", ha="left", rotation=90
 
 fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.png", dpi=300, bbox_inches="tight")
 fig_trend.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_monthly_2000_2025.pdf", dpi=300, bbox_inches="tight")
+# %%
+# -----------------------------------------------------------------------------
+# JJA linear trend mapping: 2000-2012, 2013-2025, 2000-2025
+# -----------------------------------------------------------------------------
+period_trend_configs = [
+    {
+        "label": "(a)",
+        "title": "JJA 2000-2012",
+        "path": "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_JJA_2000_2012.tif",
+    },
+    {
+        "label": "(b)",
+        "title": "JJA 2013-2025",
+        "path": "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_JJA_2013_2025.tif",
+    },
+    {
+        "label": "(c)",
+        "title": "JJA 2000-2025",
+        "path": "/data_3/shunan_2/AU/hsa500m/trend/hsa500m_trend_monthly_JJA_2000_2025.tif",
+    }
+]
+
+period_slopes = []
+period_transforms = []
+period_crs = []
+for cfg in period_trend_configs:
+    data = load_trend_raster(cfg["path"])
+    slope = data["linear_slope_per_year"].copy()
+    slope[data["linear_pvalue"] >= 0.05] = np.nan
+    print(f"{cfg['label']} {cfg['title']} Linear Slope per Year (p<0.05):")
+    print(f"  Min: {np.nanmin(slope):.6f}")
+    print(f"  Max: {np.nanmax(slope):.6f}")
+    print(f"  Mean: {np.nanmean(slope):.6f}")
+    print(f"  Median: {np.nanmedian(slope):.6f}")
+    print(f"  Std: {np.nanstd(slope):.6f}")
+    period_slopes.append(slope)
+    period_transforms.append(data["transform"])
+    period_crs.append(data["crs"])
+
+period_abs_max = float(max(np.nanmax(np.abs(s)) for s in period_slopes))
+period_cmap = getattr(cmo.cm, "balance_r")
+period_basemap = getattr(getattr(ctx.providers, "Esri"), "WorldGrayCanvas")
+
+fig_period, axes_period = plt.subplots(1, 3, figsize=(12, 7))
+fig_period.subplots_adjust(left=0.03, right=0.92, top=0.96, bottom=0.04, wspace=0.08)
+
+for ax, cfg, slope, transform, crs in zip(axes_period, period_trend_configs, period_slopes, period_transforms, period_crs):
+    show(slope, transform=transform, ax=ax, cmap=period_cmap, vmin=-period_abs_max, vmax=period_abs_max)
+    ctx.add_basemap(ax, crs=crs, source=period_basemap, attribution="Sources: Esri, HERE, Garmin, INCREMENT P, \n© OpenStreetMap contributors, and the GIS User Community")
+    show(slope, transform=transform, ax=ax, cmap=period_cmap, vmin=-period_abs_max, vmax=period_abs_max, alpha=0.88)
+    ax.add_artist(ScaleBar(dx=1.0, units="m", fixed_value=300, fixed_units="km", location="lower right", frameon=False, color="black"))
+    ax.axis("off")
+    ax.text(0.02, 0.1, cfg["label"], transform=ax.transAxes, va="top", ha="left", color="black")
+    ax.set_title(cfg["title"])
+
+sm = plt.cm.ScalarMappable(cmap=period_cmap, norm=colors.Normalize(vmin=-period_abs_max, vmax=period_abs_max))
+sm.set_array([])
+cbar_period = fig_period.colorbar(sm, ax=axes_period, orientation="vertical", fraction=0.03, pad=0.02, format="%.3f")
+cbar_period.set_label(r"Linear Trend $yr^{-1}$ (p<0.05)")
+
+fig_period.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_JJA.png", dpi=300, bbox_inches="tight")
+fig_period.savefig("/data/shunan/github/Harmonized-Albedo-for-the-Greenland-Ice-Sheet-at-500m/print/trends_JJA.pdf", dpi=300, bbox_inches="tight")
 # %%
 '''
 ('(a)', '(b)', '(c)') Linear Slope per Year (p<0.05):

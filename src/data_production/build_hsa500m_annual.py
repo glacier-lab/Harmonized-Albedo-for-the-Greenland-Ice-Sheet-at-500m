@@ -2,11 +2,11 @@
 Build annual HSA500m summary GeoTIFFs from daily gapfilled files.
 
 Reads Band 1 (hsa500m_gapfilled) from each daily hsa500m_gapfilled_YYYYMMDD.tif,
-groups by calendar year, and writes 2-band annual products:
+groups by calendar year, and writes 4-band annual products:
 - Band 1: annual average
 - Band 2: annual standard deviation
-- Band 3: number of days with albedo < 0.431 (dark ice days)
-- Band 4: number of days with albedo < 0.679 (melt season days)
+- Band 3: number of days with albedo < 0.451 (dark ice days)
+- Band 4: number of days with albedo < 0.565 (melt season days)
 
 Output filename: hsa500m_annual_YYYY.tif
 """
@@ -38,8 +38,8 @@ N_WORKERS = 20
 # Optional: restrict to specific calendar months, e.g. (6, 7, 8) for JJA.
 # Set to None to use all months.
 FILTER_MONTHS: Optional[Tuple[int, ...]] = (5, 6, 7, 8, 9)
-DARK_ICE_THRESHOLD = 0.431
-MELT_SEASON_THRESHOLD = 0.679
+DARK_ICE_THRESHOLD = 0.451
+MELT_SEASON_THRESHOLD = 0.565
 
 
 def parse_date_from_name(filename: str) -> Optional[pd.Timestamp]:
@@ -145,8 +145,8 @@ def process_year(year: int, daily_files: List[str], output_dir: str) -> Tuple[bo
     with rio.open(output_tif, "w", **profile) as dst:
         dst.set_band_description(1, "annual_mean")
         dst.set_band_description(2, "annual_std")
-        dst.set_band_description(3, "dark_ice_days_lt_0p431")
-        dst.set_band_description(4, "melt_season_days_lt_0p679")
+        dst.set_band_description(3, "dark_ice_days")
+        dst.set_band_description(4, "melt_season_days")
 
         with ProcessPoolExecutor(max_workers=N_WORKERS) as executor:
             futures = {executor.submit(process_window, task): task for task in tasks}

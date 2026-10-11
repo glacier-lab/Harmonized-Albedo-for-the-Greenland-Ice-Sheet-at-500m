@@ -41,7 +41,7 @@ from tqdm import tqdm
 # ---------------------------------------------------------------------------
 
 # Select input data mode: "daily" or "monthly"
-DATA_MODE = "daily"  # <-- change this to switch between modes
+DATA_MODE = "monthly"  # <-- change this to switch between modes
 
 # --- Daily settings ---
 _DAILY = dict(
@@ -76,8 +76,8 @@ BAND_INDEX = 1
 
 # Optional: restrict analysis to specific calendar months (e.g. JJA = 6,7,8).
 # Set to None or empty tuple to use all months.
-FILTER_MONTHS: Optional[Tuple[int, ...]] = None  # e.g. (6, 7, 8) for JJA, or None for all months
-FILTER_YEARS: Optional[Tuple[int, int]] = None  # e.g. (2000, 2020) to restrict to 2000-2020, or None for all years
+FILTER_MONTHS: Optional[Tuple[int, ...]] = (6, 7, 8)  # e.g. (6, 7, 8) for JJA, or None for all months
+FILTER_YEARS: Optional[Tuple[int, int]] = (2000, 2025) # e.g. (2000, 2020) to restrict to 2000-2020, or None for all years
 
 # Albedo validity range — values outside are treated as NaN.
 ALBEDO_MIN = 0.0
