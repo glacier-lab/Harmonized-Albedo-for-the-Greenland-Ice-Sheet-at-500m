@@ -166,3 +166,19 @@ Unlike other albedo prducts, GCOM-C albedo is derived from surface reflectance p
 5. **Fill gaps**: Uses calibrated CARRA to fill missing satellite data
 6. **Mark scenario**: Assigns appropriate scenario flag based on data source and CARRA magnitude
 
+### Point time series
+
+[`src/analysis/HSA500m_time_series_point.py`](src/analysis/HSA500m_time_series_point.py)
+extracts both HSA500m bands from every available daily GeoTIFF at one AWS
+location, independently of the AWS observation period. Before running it,
+configure `AWS_PATH`, `INPUT_DIR`, `OUTPUT_DIR`, `STATION`, `COORDINATE_YEAR`,
+and `MONTHS` at the top of the script. `COORDINATE_YEAR = None` uses the latest
+coordinate record for that station; a specified year selects a different fixed
+location. The same coordinates are used for the entire product, including years
+outside the station's coordinate records.
+
+The script writes a CSV with one row per available raster, a full time-series
+plot, and yearly boxplots of daily albedo for the selected calendar months.
+For example, set `MONTHS = (6, 7, 8)` to select JJA. Months spanning a year boundary
+are still grouped by calendar year. Both plots are saved as PNG and PDF; missing
+daily rasters appear as gaps in the time-series plot.
