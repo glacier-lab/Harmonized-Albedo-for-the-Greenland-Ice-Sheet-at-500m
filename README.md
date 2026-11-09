@@ -169,16 +169,28 @@ Unlike other albedo prducts, GCOM-C albedo is derived from surface reflectance p
 ### Point time series
 
 [`src/analysis/HSA500m_time_series_point.py`](src/analysis/HSA500m_time_series_point.py)
-extracts both HSA500m bands from every available daily GeoTIFF at one AWS
-location, independently of the AWS observation period. Before running it,
-configure `AWS_PATH`, `INPUT_DIR`, `OUTPUT_DIR`, `STATION`, `COORDINATE_YEAR`,
+extracts both HSA500m bands from every available daily GeoTIFF at selected AWS
+locations, independently of the AWS observation period. Before running it,
+configure `AWS_PATH`, `INPUT_DIR`, `OUTPUT_DIR`, `STATIONS`, `COORDINATE_YEAR`,
 and `MONTHS` at the top of the script. `COORDINATE_YEAR = None` uses the latest
-coordinate record for that station; a specified year selects a different fixed
-location. The same coordinates are used for the entire product, including years
-outside the station's coordinate records.
+coordinate record for each station; a specified year selects that year's fixed
+location for every station and must exist for all of them. The same coordinates
+are used for the entire product, including years outside the station's records.
 
-The script writes a CSV with one row per available raster, a full time-series
-plot, and yearly boxplots of daily albedo for the selected calendar months.
+Add station names to `STATIONS`, for example `("NEM", "KAN_M")`, to add panels
+to both figures. The script writes one CSV per station with one row per available
+raster, a full time-series plot, and yearly boxplots of daily albedo for the
+selected calendar months. Each panel is labeled with a letter and station name.
+The albedo plots show the range 0.2–0.95; values outside that range remain in
+the CSV.
 For example, set `MONTHS = (6, 7, 8)` to select JJA. Months spanning a year boundary
-are still grouped by calendar year. Both plots are saved as PNG and PDF; missing
+are still grouped by calendar year. The plots are saved as PNG and PDF; missing
 daily rasters appear as gaps in the time-series plot.
+
+Below each station's boxplot, annual anomaly bars show the selected-month mean
+for each year minus the mean of all available annual means for that station.
+Blue bars indicate positive anomalies and red bars negative anomalies. The
+accompanying CSV records each annual mean, anomaly, and count of valid daily
+values. All available days contribute equally to each year's mean, and each
+available year contributes equally to the reference; incomplete years are
+included and may affect the comparison.
