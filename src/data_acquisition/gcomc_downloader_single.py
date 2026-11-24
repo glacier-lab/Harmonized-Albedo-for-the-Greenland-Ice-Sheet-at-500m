@@ -5,9 +5,9 @@ Server: ftp.gportal.jaxa.jp
 Port: 2051
 Protocol: SFTP
 
-Target directory: /standard/GCOM-C/GCOM-C.SGLI/L2.CRYOS.SIPR/3
+Target directory: /standard/GCOM-C/GCOM-C.SGLI/L2.LAND.RSRF/3
 
-Filename format: GC1SG1_YYYYMMDDmttt_gAAAA_LLx1x2_KKKKr_appp.h5
+Filename format example: GC1SG1_20241201D01D_T0621_L2SG_RSRFQ_3003.h5
 where AAAA = vvhh (vv: vertical tile 00-17, hh: horizontal tile 00-35)
 
 Note:
