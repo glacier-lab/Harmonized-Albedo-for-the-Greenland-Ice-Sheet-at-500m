@@ -26,8 +26,8 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_BASE_URL = "https://csw.gportal.jaxa.jp/csw"
-DEFAULT_DATASET_ID = "10002015"
-DEFAULT_BBOX = (-180.0, 60.0, 180.0, 90.0)
+DEFAULT_DATASET_ID = "10002015" # https://img.gportal.jaxa.jp/upload/COMMON/G-Portal_datasetID_list.pdf
+DEFAULT_BBOX = (-180.0, 60.0, 180.0, 90.0) # Lower-Longitude,Lower-Latitude,Upper-Longitude,Upper-Latitude ##
 MAX_PAGE_SIZE = 3000
 
 
